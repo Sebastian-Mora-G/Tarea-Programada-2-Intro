@@ -1,45 +1,15 @@
 """
     ! Fecha de entrega: 28-11-2025
+    TODO: cuando terminemos, hay que hacer el repositorio público en GitHub para la evaluacion 
     """
 import tkinter as tk
-from tkinter import messagebox
-
+from tkinter import messagebox #Iconos posibles: 'error', 'info', 'question', 'warning'
+import time
+import Clases.camino as camino
+import Clases.lianas as lianas
 #CLASES DE LOS CAMINOS ==========================================================================
-class Camino:
-    def __init__(self):
-        self.tipo = "Camino"
-        
-    def permitir_todos(self): #Esta f tal vez sobre. Pero mejor ponerla por si acaso
-        """
-        * Todos pueden pasar. Por ende, true
-        """
-        return True
-    
-class Lianas:
-    def init__(self):
-        self.tipo = "Lianas"
-        
-    def permitir_cazadores(self,tipo_jugador): 
-        """
-        Devuelve True si el jugador es Cazador, False si es jugador \n
-        O sea, devuelve True si puede pasar por este terreno. 
-        """
-        if tipo_jugador == "Cazador":
-            return True
-        return False
 
-class Tuneles:
-    def __init__(self):
-        self.tipo = "Tuneles"
-    
-    def permitir_jugadores(self,tipo_jugador):
-        """
-        Devuelve True si el jugador es Jugador, False si es Cazador \n
-        O sea, devuelve True si puede pasar por este terreno.
-        """
-        if tipo_jugador == "Jugador":
-            return True
-        return False
+
 class Muros:
     def __init__(self):
         self.tipo = "Muros"
@@ -55,24 +25,27 @@ user_jugadores = []
 
 """///--------------FUNCIONES GUI---------------///"""
 class Gui:
-    #E: Ninguna
-    #S: Modifica lista user_jugadores
-    #R: Nombre no vacío
-    #Funcionalidad: Ventana registro jugador
+    #TODO: agregar el __init__. Podemos hacer que cree la ventana, tipo como el profe lo hizo en el ejemplo de los autos de carreras con Threads. 
+    """E: Ninguna
+    S: Modifica lista user_jugadores \
+    R: Nombre no vacío
+    Funcionalidad: Ventana registro jugador"""
     def registrar_jugador():
         
         """#E: Evento tecla \n
         #S: Ejecuta procesar_registro\n
         #R: Solo responde a tecla Enter\n
         #Funcionalidad: Detectar Enter"""
-        def enter_presionado(event): #El event se pone obligatorio o todo se cae
+        def enter_presionado(event): #El event se pone obligatorio o todo se cae. Nota Sebas: quité el event, y no se me cayó
             procesar_registro()
         
-        #E: Ninguna
-        #S: Modifica user_jugadores o muestra error
-        #R: Nombre no vacío
-        #Funcionalidad: Procesar nombre ingresado
         def procesar_registro():
+            """
+            #E: Ninguna \n
+            #S: Modifica user_jugadores o muestra error \n
+            #R: Nombre no vacío \n
+            #Funcionalidad: Procesar nombre ingresado \n
+            """
             nombre = entry_nombre.get().strip()
             
             if nombre:
@@ -81,7 +54,7 @@ class Gui:
                 #ventana.quit()                                              #Si dejamos esto, destruye toda la ventana. Mejor comentarlo
                 #ventana.destroy()
             else:
-                messagebox.showerror("Error", "Tu nombre no puede ser vacío, escribe uno válido")
+                messagebox.showerror("Error", "Tu nombre no puede ser vacío, escribe uno válido", icon="warning")
 
         ventana = tk.Tk()
         ventana.title("Registro Jugador")
@@ -98,7 +71,6 @@ class Gui:
         boton_registrar.pack(pady=10)
 
         boton_salir = tk.Button(ventana, text="Salir", command=ventana.destroy);boton_salir.pack()
-
 
         ventana.mainloop()
 
