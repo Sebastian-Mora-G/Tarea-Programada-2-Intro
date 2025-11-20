@@ -189,7 +189,7 @@ class Gui:
         
         #Configurar bindings de teclado para capturar eventos de flechas
         mapa_ventana.bind("<KeyPress>", tecla_presionada)
-        mapa_ventana.focus_set()  #Asegurar que la ventana reciba eventos de teclado
+        mapa_ventana.focus_set()  #Asegurar que la ventana reciba eventos de teclad
         
         mapa_ventana.mainloop()
 
