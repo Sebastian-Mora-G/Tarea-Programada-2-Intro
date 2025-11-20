@@ -9,6 +9,7 @@ import Clases.camino as camino
 import Clases.lianas as lianas
 import Clases.tuneles as tuneles
 import Clases.muros as muros
+import Clases.jugador as jugador_clase
 import random
 #CLASES DE LOS CAMINOS ==========================================================================
 
@@ -29,7 +30,7 @@ class Gui:
         #S: Ejecuta procesar_registro\n
         #R: Solo responde a tecla Enter\n
         #Funcionalidad: Detectar Enter"""
-        def enter_presionado(): 
+        def enter_presionado(event): 
             procesar_registro()
         
         def procesar_registro():
@@ -110,41 +111,85 @@ class Gui:
         mapa_frame.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         mapa_frame.pack_propagate(False)
         
-        #Frame para opciones futuras como correr(si no logramos hacerlo con shift, ponemos un botón) o los tops
+        #Frame para opciones futuras como correr(si no logramos hacerlo con shift, ponemos un botón) y los tops
         opciones_frame = tk.Frame(main_frame, width=150, height=600, bg="lightgray")
         opciones_frame.pack(side=tk.RIGHT, fill=tk.Y)
         opciones_frame.pack_propagate(False)
         
-        #Generar y dibujar mapa
+        #Generar mapa y crear jugador usando la clase importada
         mapa = Gui.generar_mapa_aleatorio()
+        jugador = jugador_clase.Jugador(0, 0)  #Jugador empieza en posición (0,0)
         cell_size = 35
+        #Matriz para almacenar los canvas de cada celda y poder actualizar el jugador
+        celdas_canvas = [[None for _ in range(len(mapa[0]))] for _ in range(len(mapa))]
         
-        for i in range(len(mapa)):
-            for j in range(len(mapa[0])):
-                x1 = j * cell_size + 5
-                y1 = i * cell_size + 5
-                x2 = x1 + cell_size
-                y2 = y1 + cell_size
-                
-                cell_type = mapa[i][j]
-                canvas = tk.Canvas(mapa_frame, width=cell_size, height=cell_size, 
-                                  bg='white', highlightthickness=1, highlightbackground='black')
-                canvas.place(x=x1, y=y1)
-                
-                if cell_type == 0:  #Muro con forma de tablero de gatp
-                    #Líneas horizontales
-                    canvas.create_line(0, cell_size/3, cell_size, cell_size/3, width=2)
-                    canvas.create_line(0, 2*cell_size/3, cell_size, 2*cell_size/3, width=2)
-                    #Líneas verticales
-                    canvas.create_line(cell_size/3, 0, cell_size/3, cell_size, width=2)
-                    canvas.create_line(2*cell_size/3, 0, 2*cell_size/3, cell_size, width=2)
-                elif cell_type == 1:  #Camino
-                    canvas.configure(bg='white')
-                elif cell_type == 2:  #Túnel
-                    canvas.configure(bg='white')
-                    canvas.create_oval(5, 5, cell_size-5, cell_size-5, fill='black', outline='black')
-                elif cell_type == 3:  #Lianas
-                    canvas.configure(bg='green')
+        def dibujar_mapa():
+            for i in range(len(mapa)):
+                for j in range(len(mapa[0])): #va calculando y posicionando cada celda del mapa, en base a coordenadas
+                    x1 = j * cell_size + 5
+                    y1 = i * cell_size + 5
+                    
+                    cell_type = mapa[i][j]
+                    canvas = tk.Canvas(mapa_frame, width=cell_size, height=cell_size, 
+                                      bg='white', highlightthickness=1, highlightbackground='black')
+                    canvas.place(x=x1, y=y1)
+                    celdas_canvas[i][j] = canvas  #Guardar referencia al canvas
+                    
+                    if cell_type == 0:  #Muro con forma de tablero de gato
+                        #Líneas horizontales
+                        canvas.create_line(0, cell_size/3, cell_size, cell_size/3, width=2)
+                        canvas.create_line(0, 2*cell_size/3, cell_size, 2*cell_size/3, width=2)
+                        #Líneas verticales
+                        canvas.create_line(cell_size/3, 0, cell_size/3, cell_size, width=2)
+                        canvas.create_line(2*cell_size/3, 0, 2*cell_size/3, cell_size, width=2)
+                    elif cell_type == 1:  #Camino
+                        canvas.configure(bg='white')
+                    elif cell_type == 2:  #Túnel
+                        canvas.configure(bg='white')
+                        canvas.create_oval(5, 5, cell_size-5, cell_size-5, fill='black', outline='black')
+                    elif cell_type == 3:  #Lianas
+                        canvas.configure(bg='green')
+            
+            #Dibujar jugador en su posición inicial después de crear todo el mapa
+            dibujar_jugador()
+        
+        def dibujar_jugador():
+            #Limpiar posición anterior del jugador (eliminar estrella de todas las celdas)
+            for i in range(len(mapa)):
+                for j in range(len(mapa[0])):
+                    canvas = celdas_canvas[i][j]
+                    #Buscar y eliminar la estrella si existe en esta celda
+                    items = canvas.find_all()
+                    for item in items:
+                        if canvas.type(item) == "text":  #Si es texto (la estrella)
+                            canvas.delete(item)
+            
+            #Dibujar jugador en nueva posición actual
+            canvas_jugador = celdas_canvas[jugador.fila][jugador.columna]
+            canvas_jugador.create_text(cell_size/2, cell_size/2, text=jugador.simbolo, 
+                                     fill=jugador.color, font=("Arial", 12, "bold"))
+        
+        def tecla_presionada(event):
+            #Detectar teclas de flecha y mover jugador en dirección correspondiente volviendolo a dibujar y borrandolo en su pos anterior
+            if event.keysym == "Up":
+                jugador.mover("up", len(mapa), len(mapa[0]))  #Usar método mover de la clase Jugador
+                dibujar_jugador()
+            elif event.keysym == "Down":
+                jugador.mover("down", len(mapa), len(mapa[0]))
+                dibujar_jugador()
+            elif event.keysym == "Left":
+                jugador.mover("left", len(mapa), len(mapa[0]))
+                dibujar_jugador()
+            elif event.keysym == "Right":
+                jugador.mover("right", len(mapa), len(mapa[0]))
+                dibujar_jugador()
+        
+        #Dibujar mapa inicial con todas las celdas
+        dibujar_mapa()
+        
+        #Configurar bindings de teclado para capturar eventos de flechas
+        mapa_ventana.bind("<KeyPress>", tecla_presionada)
+        mapa_ventana.focus_set()  #Asegurar que la ventana reciba eventos de teclado
         
         mapa_ventana.mainloop()
 
