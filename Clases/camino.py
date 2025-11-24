@@ -7,4 +7,4 @@ class Camino:
         * Todos pueden pasar. Por ende, true
         """
         return True
-print(Camino().permitir_todos())
+#print(Camino().permitir_todos())

@@ -12,7 +12,6 @@ import Clases.muros as muros
 import Clases.jugador as jugador_clase
 import Clases.enemigo as enemigo_clase
 import random
-
 #Lista global de jugadores
 user_jugadores = []
 #Variables globales de juego
@@ -22,6 +21,55 @@ puntaje_actual = 0
 enemigos = []
 tiempo_inicio = 0
 juego_activo = True  # Variable para controlar si el juego está activo
+
+top_jugadores_escapa = []
+top_jugadores_caza = []
+
+#COMMONS(Archivos)-----------------------------------------------------------------
+
+def salvar_tabla_puntajes(): 
+    """
+    Salva en 2 archivos distintos para el top 5 de Escapa y el top 5 de caza
+    """
+    global top_jugadores_escapa, top_jugadores_caza
+    top_5_escapa = buscar_top_5(top_jugadores_escapa)
+    top_5_caza = buscar_top_5(top_jugadores_caza)
+
+    with open("top_5_escapa.txt","w") as file:
+        file.write(top_5_escapa)
+    with open("top_5_caza.txt","w") as file:
+        file.write(top_5_caza)
+        
+
+def leer_top_5_escapa():
+    """
+    Lee el archivo de escapa
+    """
+    global top_jugadores_escapa
+    try: 
+        with open("top_5_escapa.txt","r") as file:
+            top_jugadores_escapa = eval(file.read())
+    except FileNotFoundError:
+        top_jugadores_escapa = "No hay jugadores en el top 5"
+
+def leer_top_5_caza():
+    """
+    Lee el archivo de Caza
+    """
+    global top_jugadores_caza
+    try: 
+        with open("top_5_caza.txt","r") as file:
+            top_jugadores_caza = eval(file.read())
+    except FileNotFoundError:
+        top_jugadores_caza = "No hay jugadores en el top 5"
+
+def buscar_top_5(lista:list): #van de Mayor a Menor
+    lista.sort(key=lambda x: x[1], reverse=True)
+    if len(lista) < 5:
+        return lista
+    top_5 = lista[0] + lista[1] + lista[2] + lista[3] + lista[4]
+    return top_5
+#----------------------------------------------------------------------------------
 
 """///--------------FUNCIONES GUI---------------///"""
 class Gui:
@@ -53,6 +101,28 @@ class Gui:
                 Gui.mostrar_mapa()
             else:
                 messagebox.showerror("Error", "Tu nombre no puede ser vacío, escribe uno válido", icon="warning")
+        #TOP 5----------------------------------------------------------------------------------------------------
+        def mostrar_top_5_escapa():
+            mensaje = ""
+            leer_top_5_escapa()
+            global top_jugadores_escapa
+            try:
+                for jugador in top_jugadores_escapa:
+                    mensaje += f"Jugador {jugador[0]} | Puntuación: {jugador[1]}"
+                messagebox.showinfo("Info", mensaje)
+            except:
+                messagebox.showinfo("Error", "No hay jugadores en este Top")
+        def mostrar_top_5_caza():
+            mensaje = ""
+            leer_top_5_caza()
+            global top_jugadores_caza
+            try:
+                for jugador in top_jugadores_caza:
+                    mensaje += f"Jugador {jugador[0]} | Puntuación: {jugador[1]}"
+                messagebox.showinfo("Info", mensaje)
+            except:
+                messagebox.showinfo("Error", "No hay jugadores en este Top")
+        #----------------------------------------------------------------------------------------------------
 
         ventana = tk.Tk()
         ventana.title("Registro Jugador")
@@ -68,6 +138,10 @@ class Gui:
 
         boton_registrar = tk.Button(ventana, text="Comenzar Juego", command=procesar_registro)
         boton_registrar.pack(pady=10)
+
+        boton_puntaje_escapa = tk.Button(ventana,text="Top 5(modo escapa)" ,command=mostrar_top_5_escapa);boton_puntaje_escapa.pack(anchor="center")
+        
+        boton_puntaje_cazador = tk.Button(ventana,text="Top 5(modo cazador)" ,command=mostrar_top_5_caza);boton_puntaje_cazador.pack(anchor="center")
 
         boton_salir = tk.Button(ventana, text="Salir", command=ventana.destroy)
         boton_salir.pack()
@@ -99,11 +173,11 @@ class Gui:
                 if mapa[i][j] == 0:
                     rand_val = random.random()
                     if rand_val < 0.4:
-                        mapa[i][j] = 0
+                        mapa[i][j] = 0 #Muro
                     elif rand_val < 0.7:
-                        mapa[i][j] = 2
+                        mapa[i][j] = 2 #Tunel
                     else:
-                        mapa[i][j] = 3
+                        mapa[i][j] = 3 #Lianas
         
         return mapa
 
@@ -162,30 +236,79 @@ class Gui:
         filas = len(mapa)
         columnas = len(mapa[0])
         
-        #Obtener todas las posiciones válidas (caminos) en el mapa
-        posiciones_validas = []
-        for i in range(filas):
-            for j in range(columnas):
-                if mapa[i][j] == 1:  #Solo caminos
-                    posiciones_validas.append((i, j))
-        
-        #Para ambos modos, usar posiciones aleatorias
-        #Filtrar posiciones que no sean la del jugador
-        posiciones_disponibles = [pos for pos in posiciones_validas if pos != (jugador.fila, jugador.columna)]
-        
-        #Si no hay suficientes posiciones, usar todas las disponibles
-        if len(posiciones_disponibles) < cantidad:
-            posiciones_disponibles = posiciones_validas.copy()
-            #Si la posición del jugador está incluida, quitarla
-            if (jugador.fila, jugador.columna) in posiciones_disponibles:
-                posiciones_disponibles.remove((jugador.fila, jugador.columna))
-        
-        #Mezclar las posiciones y tomar las necesarias
-        random.shuffle(posiciones_disponibles)
-        posiciones_seleccionadas = posiciones_disponibles[:cantidad]
-        
-        for fila, columna in posiciones_seleccionadas:
-            enemigos.append(enemigo_clase.Enemigo(fila, columna))
+        if modo == "escapa":
+            #Modo Escapa: enemigos en posiciones aleatorias distribuidas
+            posiciones_ocupadas = set()
+            
+            for _ in range(cantidad):
+                #Buscar posición aleatoria válida (camino) que no sea la del jugador
+                intentos = 0
+                while intentos < 50:
+                    fila = random.randint(0, filas-1)
+                    columna = random.randint(0, columnas-1)
+                    posicion = (fila, columna)
+                    
+                    if (mapa[fila][columna] == 1 and 
+                        (fila != jugador.fila or columna != jugador.columna) and
+                        posicion not in posiciones_ocupadas):
+                        
+                        enemigos.append(enemigo_clase.Enemigo(fila, columna))
+                        posiciones_ocupadas.add(posicion)
+                        break
+                    intentos += 1
+                
+                if len(enemigos) < _ + 1:
+                    break
+                    
+        else:
+            #Modo Cazador: enemigos juntos en el centro
+            centro_fila = filas // 2
+            centro_columna = columnas // 2
+            
+            #Crear más posiciones alrededor del centro según la cantidad necesaria
+            posiciones_centro = []
+            radio = 2  #Radio máximo alrededor del centro
+            
+            #Generar todas las posiciones dentro del radio
+            for i in range(-radio, radio + 1):
+                for j in range(-radio, radio + 1):
+                    #Excluir la posición del jugador si está en el centro
+                    if (centro_fila + i != jugador.fila or centro_columna + j != jugador.columna):
+                        posiciones_centro.append((centro_fila + i, centro_columna + j))
+            
+            #Mezclar las posiciones para variedad
+            random.shuffle(posiciones_centro)
+            
+            #Tomar solo posiciones válidas hasta alcanzar la cantidad necesaria
+            enemigos_creados = 0
+            for pos in posiciones_centro:
+                if enemigos_creados >= cantidad:
+                    break
+                    
+                fila, columna = pos
+                if (0 <= fila < filas and 0 <= columna < columnas and 
+                    mapa[fila][columna] == 1):
+                    enemigos.append(enemigo_clase.Enemigo(fila, columna))
+                    enemigos_creados += 1
+            
+            #Si aún no tenemos suficientes enemigos, buscar posiciones aleatorias cerca del centro
+            if enemigos_creados < cantidad:
+                for _ in range(cantidad - enemigos_creados):
+                    intentos = 0
+                    while intentos < 20:
+                        #Buscar posiciones cerca del centro (radio más amplio)
+                        fila = centro_fila + random.randint(-3, 3)
+                        columna = centro_columna + random.randint(-3, 3)
+                        posicion = (fila, columna)
+                        
+                        if (0 <= fila < filas and 0 <= columna < columnas and 
+                            mapa[fila][columna] == 1 and
+                            (fila != jugador.fila or columna != jugador.columna) and
+                            posicion not in [(e.fila, e.columna) for e in enemigos]):
+                            
+                            enemigos.append(enemigo_clase.Enemigo(fila, columna))
+                            break
+                        intentos += 1
         
         return enemigos
 
@@ -261,8 +384,8 @@ class Gui:
         
         #Botones de control
         boton_modo = tk.Button(opciones_frame, text=f"Modo: {modo_actual.capitalize()}", 
-                              command=lambda: [Gui.cambiar_modo(), actualizar_boton_modo(), reiniciar_enemigos()], 
-                              width=15)
+                            command=lambda: [Gui.cambiar_modo(), actualizar_boton_modo(), reiniciar_enemigos()], 
+                            width=15)
         boton_modo.pack(pady=10)
         
         #Frame para dificultad
@@ -273,8 +396,8 @@ class Gui:
         label_dificultad.pack()
         
         boton_facil = tk.Button(dificultad_frame, text="Fácil", 
-                               command=lambda: [Gui.cambiar_dificultad("facil"), reiniciar_enemigos()], 
-                               width=10)
+                            command=lambda: [Gui.cambiar_dificultad("facil"), reiniciar_enemigos()], 
+                            width=10)
         boton_facil.pack(pady=2)
         
         boton_intermedio = tk.Button(dificultad_frame, text="Intermedio", 
@@ -283,8 +406,8 @@ class Gui:
         boton_intermedio.pack(pady=2)
         
         boton_dificil = tk.Button(dificultad_frame, text="Difícil", 
-                                 command=lambda: [Gui.cambiar_dificultad("dificil"), reiniciar_enemigos()], 
-                                 width=10)
+                                command=lambda: [Gui.cambiar_dificultad("dificil"), reiniciar_enemigos()], 
+                                width=10)
         boton_dificil.pack(pady=2)
         
         #Label para puntaje (solo mostrará puntaje si ganas)
@@ -294,7 +417,7 @@ class Gui:
         
         #Label para tiempo transcurrido
         label_tiempo = tk.Label(opciones_frame, text="Tiempo: 0s", 
-                               bg="lightgray", font=("Arial", 10))
+                            bg="lightgray", font=("Arial", 10))
         label_tiempo.pack(pady=10)
         
         #E: Ninguna
@@ -309,7 +432,7 @@ class Gui:
                     
                     cell_type = mapa[i][j]
                     canvas = tk.Canvas(mapa_frame, width=cell_size, height=cell_size, 
-                                      bg='white', highlightthickness=1, highlightbackground='black')
+                                    bg='white', highlightthickness=1, highlightbackground='black')
                     canvas.place(x=x1, y=y1)
                     celdas_canvas[i][j] = canvas
                     
@@ -317,7 +440,7 @@ class Gui:
                     if i == len(mapa)-1 and j == len(mapa[0])-1:
                         canvas.configure(bg='gold')
                         canvas.create_text(cell_size/2, cell_size/2, text="META", 
-                                         fill='black', font=("Arial", 8, "bold"))
+                                        fill='black', font=("Arial", 8, "bold"))
                     elif cell_type == 0:  #Muro
                         canvas.create_line(0, cell_size/3, cell_size, cell_size/3, width=2)
                         canvas.create_line(0, 2*cell_size/3, cell_size, 2*cell_size/3, width=2)
@@ -351,7 +474,7 @@ class Gui:
             #Dibujar en nueva posición
             canvas_jugador = celdas_canvas[jugador.fila][jugador.columna]
             canvas_jugador.create_text(cell_size/2, cell_size/2, text=jugador.simbolo, 
-                                     fill=jugador.color, font=("Arial", 12, "bold"))
+                                    fill=jugador.color, font=("Arial", 12, "bold"))
         
         #E: Ninguna
         #S: Dibuja todos los enemigos en el mapa
@@ -371,7 +494,7 @@ class Gui:
             for enemigo in enemigos:
                 canvas_enemigo = celdas_canvas[enemigo.fila][enemigo.columna]
                 canvas_enemigo.create_text(cell_size/2, cell_size/2, text=enemigo.carita, 
-                                         fill=enemigo.color, font=("Arial", 10, "bold"))
+                                        fill=enemigo.color, font=("Arial", 10, "bold"))
         
         #E: Ninguna
         #S: Actualiza el label de tiempo en la interfaz
@@ -440,10 +563,10 @@ class Gui:
             for enemigo in enemigos:
                 if modo_actual == "cazador":
                     #En modo cazador, enemigos van hacia la meta (esquina inferior derecha)
-                    enemigo.mover_hacia_meta(len(mapa)-1, len(mapa[0])-1, len(mapa), len(mapa[0]), enemigos)
+                    enemigo.mover_hacia_meta(len(mapa)-1, len(mapa[0])-1, len(mapa), len(mapa[0]))
                 else:
                     #En modo escapa, enemigos persiguen/huyen según comportamiento normal
-                    enemigo.mover(jugador.fila, jugador.columna, modo_actual, len(mapa), len(mapa[0]), enemigos)
+                    enemigo.mover(jugador.fila, jugador.columna, modo_actual, len(mapa), len(mapa[0]))
             
             dibujar_enemigos()
             verificar_estado_juego()
@@ -462,6 +585,8 @@ class Gui:
                 return
                 
             if event.keysym == "Up":
+                jugador.mover("up", len(mapa), len(mapa[0]))  #Usar método mover de la clase Jugador
+                dibujar_jugador() 
                 jugador.mover("up", len(mapa), len(mapa[0]))
             elif event.keysym == "Down":
                 jugador.mover("down", len(mapa), len(mapa[0]))
@@ -485,6 +610,7 @@ class Gui:
         
         #Configurar bindings de teclado
         mapa_ventana.bind("<KeyPress>", tecla_presionada)
+        mapa_ventana.focus_set()  #Asegurar que la ventana reciba eventos de teclado
         mapa_ventana.focus_set()
         
         mapa_ventana.mainloop()
