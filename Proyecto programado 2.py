@@ -167,9 +167,9 @@ class Gui:
             posiciones_ocupadas = set()
             
             for _ in range(cantidad):
-                #Buscar posición aleatoria válida (camino) que no sea la del jugador y no repetida
+                #Buscar posición aleatoria válida (camino) que no sea la del jugador
                 intentos = 0
-                while intentos < 100:  #Límite de intentos para evitar bucle infinito
+                while intentos < 50:
                     fila = random.randint(0, filas-1)
                     columna = random.randint(0, columnas-1)
                     posicion = (fila, columna)
@@ -182,34 +182,59 @@ class Gui:
                         posiciones_ocupadas.add(posicion)
                         break
                     intentos += 1
+                
+                if len(enemigos) < _ + 1:
+                    break
+                    
         else:
-            #Modo Cazador: enemigos juntos en el centro, dirigiéndose hacia la salida
+            #Modo Cazador: enemigos juntos en el centro
             centro_fila = filas // 2
             centro_columna = columnas // 2
             
-            #Posiciones alrededor del centro (más posiciones para dificultad difícil)
-            posiciones_centro = [
-                (centro_fila, centro_columna),
-                (centro_fila-1, centro_columna),
-                (centro_fila+1, centro_columna),
-                (centro_fila, centro_columna-1),
-                (centro_fila, centro_columna+1),
-                (centro_fila-1, centro_columna-1),
-                (centro_fila-1, centro_columna+1),
-                (centro_fila+1, centro_columna-1),
-                (centro_fila+1, centro_columna+1),
-                (centro_fila-2, centro_columna),
-                (centro_fila+2, centro_columna),
-                (centro_fila, centro_columna-2),
-                (centro_fila, centro_columna+2)
-            ]
+            #Crear más posiciones alrededor del centro según la cantidad necesaria
+            posiciones_centro = []
+            radio = 2  #Radio máximo alrededor del centro
             
-            for i in range(cantidad):
-                if i < len(posiciones_centro):
-                    fila, columna = posiciones_centro[i]
-                    if (0 <= fila < filas and 0 <= columna < columnas and 
-                        mapa[fila][columna] == 1):
-                        enemigos.append(enemigo_clase.Enemigo(fila, columna))
+            #Generar todas las posiciones dentro del radio
+            for i in range(-radio, radio + 1):
+                for j in range(-radio, radio + 1):
+                    #Excluir la posición del jugador si está en el centro
+                    if (centro_fila + i != jugador.fila or centro_columna + j != jugador.columna):
+                        posiciones_centro.append((centro_fila + i, centro_columna + j))
+            
+            #Mezclar las posiciones para variedad
+            random.shuffle(posiciones_centro)
+            
+            #Tomar solo posiciones válidas hasta alcanzar la cantidad necesaria
+            enemigos_creados = 0
+            for pos in posiciones_centro:
+                if enemigos_creados >= cantidad:
+                    break
+                    
+                fila, columna = pos
+                if (0 <= fila < filas and 0 <= columna < columnas and 
+                    mapa[fila][columna] == 1):
+                    enemigos.append(enemigo_clase.Enemigo(fila, columna))
+                    enemigos_creados += 1
+            
+            #Si aún no tenemos suficientes enemigos, buscar posiciones aleatorias cerca del centro
+            if enemigos_creados < cantidad:
+                for _ in range(cantidad - enemigos_creados):
+                    intentos = 0
+                    while intentos < 20:
+                        #Buscar posiciones cerca del centro (radio más amplio)
+                        fila = centro_fila + random.randint(-3, 3)
+                        columna = centro_columna + random.randint(-3, 3)
+                        posicion = (fila, columna)
+                        
+                        if (0 <= fila < filas and 0 <= columna < columnas and 
+                            mapa[fila][columna] == 1 and
+                            (fila != jugador.fila or columna != jugador.columna) and
+                            posicion not in [(e.fila, e.columna) for e in enemigos]):
+                            
+                            enemigos.append(enemigo_clase.Enemigo(fila, columna))
+                            break
+                        intentos += 1
         
         return enemigos
 
