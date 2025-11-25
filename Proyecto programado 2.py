@@ -162,79 +162,30 @@ class Gui:
         filas = len(mapa)
         columnas = len(mapa[0])
         
-        if modo == "escapa":
-            #Modo Escapa: enemigos en posiciones aleatorias distribuidas
-            posiciones_ocupadas = set()
-            
-            for _ in range(cantidad):
-                #Buscar posición aleatoria válida (camino) que no sea la del jugador
-                intentos = 0
-                while intentos < 50:
-                    fila = random.randint(0, filas-1)
-                    columna = random.randint(0, columnas-1)
-                    posicion = (fila, columna)
-                    
-                    if (mapa[fila][columna] == 1 and 
-                        (fila != jugador.fila or columna != jugador.columna) and
-                        posicion not in posiciones_ocupadas):
-                        
-                        enemigos.append(enemigo_clase.Enemigo(fila, columna))
-                        posiciones_ocupadas.add(posicion)
-                        break
-                    intentos += 1
-                
-                if len(enemigos) < _ + 1:
-                    break
-                    
-        else:
-            #Modo Cazador: enemigos juntos en el centro
-            centro_fila = filas // 2
-            centro_columna = columnas // 2
-            
-            #Crear más posiciones alrededor del centro según la cantidad necesaria
-            posiciones_centro = []
-            radio = 2  #Radio máximo alrededor del centro
-            
-            #Generar todas las posiciones dentro del radio
-            for i in range(-radio, radio + 1):
-                for j in range(-radio, radio + 1):
-                    #Excluir la posición del jugador si está en el centro
-                    if (centro_fila + i != jugador.fila or centro_columna + j != jugador.columna):
-                        posiciones_centro.append((centro_fila + i, centro_columna + j))
-            
-            #Mezclar las posiciones para variedad
-            random.shuffle(posiciones_centro)
-            
-            #Tomar solo posiciones válidas hasta alcanzar la cantidad necesaria
-            enemigos_creados = 0
-            for pos in posiciones_centro:
-                if enemigos_creados >= cantidad:
-                    break
-                    
-                fila, columna = pos
-                if (0 <= fila < filas and 0 <= columna < columnas and 
-                    mapa[fila][columna] == 1):
-                    enemigos.append(enemigo_clase.Enemigo(fila, columna))
-                    enemigos_creados += 1
-            
-            #Si aún no tenemos suficientes enemigos, buscar posiciones aleatorias cerca del centro
-            if enemigos_creados < cantidad:
-                for _ in range(cantidad - enemigos_creados):
-                    intentos = 0
-                    while intentos < 20:
-                        #Buscar posiciones cerca del centro (radio más amplio)
-                        fila = centro_fila + random.randint(-3, 3)
-                        columna = centro_columna + random.randint(-3, 3)
-                        posicion = (fila, columna)
-                        
-                        if (0 <= fila < filas and 0 <= columna < columnas and 
-                            mapa[fila][columna] == 1 and
-                            (fila != jugador.fila or columna != jugador.columna) and
-                            posicion not in [(e.fila, e.columna) for e in enemigos]):
-                            
-                            enemigos.append(enemigo_clase.Enemigo(fila, columna))
-                            break
-                        intentos += 1
+        #Obtener todas las posiciones válidas (caminos) en el mapa
+        posiciones_validas = []
+        for i in range(filas):
+            for j in range(columnas):
+                if mapa[i][j] == 1:  #Solo caminos
+                    posiciones_validas.append((i, j))
+        
+        #Para ambos modos, usar posiciones aleatorias
+        #Filtrar posiciones que no sean la del jugador
+        posiciones_disponibles = [pos for pos in posiciones_validas if pos != (jugador.fila, jugador.columna)]
+        
+        #Si no hay suficientes posiciones, usar todas las disponibles
+        if len(posiciones_disponibles) < cantidad:
+            posiciones_disponibles = posiciones_validas.copy()
+            #Si la posición del jugador está incluida, quitarla
+            if (jugador.fila, jugador.columna) in posiciones_disponibles:
+                posiciones_disponibles.remove((jugador.fila, jugador.columna))
+        
+        #Mezclar las posiciones y tomar las necesarias
+        random.shuffle(posiciones_disponibles)
+        posiciones_seleccionadas = posiciones_disponibles[:cantidad]
+        
+        for fila, columna in posiciones_seleccionadas:
+            enemigos.append(enemigo_clase.Enemigo(fila, columna))
         
         return enemigos
 
@@ -489,10 +440,10 @@ class Gui:
             for enemigo in enemigos:
                 if modo_actual == "cazador":
                     #En modo cazador, enemigos van hacia la meta (esquina inferior derecha)
-                    enemigo.mover_hacia_meta(len(mapa)-1, len(mapa[0])-1, len(mapa), len(mapa[0]))
+                    enemigo.mover_hacia_meta(len(mapa)-1, len(mapa[0])-1, len(mapa), len(mapa[0]), enemigos)
                 else:
                     #En modo escapa, enemigos persiguen/huyen según comportamiento normal
-                    enemigo.mover(jugador.fila, jugador.columna, modo_actual, len(mapa), len(mapa[0]))
+                    enemigo.mover(jugador.fila, jugador.columna, modo_actual, len(mapa), len(mapa[0]), enemigos)
             
             dibujar_enemigos()
             verificar_estado_juego()

@@ -6,16 +6,33 @@ class Enemigo:
         self.color = "red"
     
     #Funcionalidad: Decidir movimiento del enemigo según modo de juego
-    def mover(self, jugador_fila, jugador_columna, modo, filas_mapa, columnas_mapa):
+    def mover(self, jugador_fila, jugador_columna, modo, filas_mapa, columnas_mapa, otros_enemigos=None):
         if modo == "escapa":
             #Perseguir al jugador
-            return self._perseguir(jugador_fila, jugador_columna, filas_mapa, columnas_mapa)
+            nueva_fila, nueva_columna = self._perseguir(jugador_fila, jugador_columna, filas_mapa, columnas_mapa)
         else:
             #Huir del jugador
-            return self._huir(jugador_fila, jugador_columna, filas_mapa, columnas_mapa)
+            nueva_fila, nueva_columna = self._huir(jugador_fila, jugador_columna, filas_mapa, columnas_mapa)
+        
+        #Verificar si la nueva posición está ocupada por otro enemigo
+        if otros_enemigos:
+            posicion_ocupada = False
+            for enemigo in otros_enemigos:
+                if enemigo != self and enemigo.fila == nueva_fila and enemigo.columna == nueva_columna:
+                    posicion_ocupada = True
+                    break
+            
+            #Si la posición está ocupada, mantener la posición actual
+            if posicion_ocupada:
+                return self.fila, self.columna
+        
+        #Actualizar posición si no está ocupada
+        self.fila = nueva_fila
+        self.columna = nueva_columna
+        return self.fila, self.columna
     
-    #Funcio: para el modo escapa, permite que los enemigos vayan a la meta
-    def mover_hacia_meta(self, meta_fila, meta_columna, filas_mapa, columnas_mapa):
+    #Funcionalidad: Movimiento dirigido hacia la meta en modo cazador
+    def mover_hacia_meta(self, meta_fila, meta_columna, filas_mapa, columnas_mapa, otros_enemigos=None):
         nueva_fila = self.fila
         nueva_columna = self.columna
         
@@ -33,10 +50,22 @@ class Enemigo:
             elif meta_columna < self.columna and self.columna > 0:
                 nueva_columna -= 1
         
-        #Actualizar posición
+        #Verificar si la nueva posición está ocupada por otro enemigo
+        if otros_enemigos:
+            posicion_ocupada = False
+            for enemigo in otros_enemigos:
+                if enemigo != self and enemigo.fila == nueva_fila and enemigo.columna == nueva_columna:
+                    posicion_ocupada = True
+                    break
+            
+            #Si la posición está ocupada, mantener la posición actual
+            if posicion_ocupada:
+                return self.fila, self.columna
+        
+        #Actualizar posición si no está ocupada
         self.fila = nueva_fila
         self.columna = nueva_columna
-        return nueva_fila, nueva_columna
+        return self.fila, self.columna
     
     #Funcionalidad: Movimiento de persecución hacia el jugador
     def _perseguir(self, jugador_fila, jugador_columna, filas_mapa, columnas_mapa):
@@ -58,11 +87,7 @@ class Enemigo:
             elif jugador_columna > self.columna and self.columna < columnas_mapa - 1:
                 nueva_columna += 1
         
-        #Actualizar posición
-        self.fila = nueva_fila
-        self.columna = nueva_columna
         return nueva_fila, nueva_columna
-    
     
     #Funcionalidad: Movimiento de huida del jugador
     def _huir(self, jugador_fila, jugador_columna, filas_mapa, columnas_mapa):
@@ -84,7 +109,4 @@ class Enemigo:
             elif jugador_columna > self.columna and self.columna > 0:
                 nueva_columna -= 1
         
-        #Actualizar posición
-        self.fila = nueva_fila
-        self.columna = nueva_columna
         return nueva_fila, nueva_columna
