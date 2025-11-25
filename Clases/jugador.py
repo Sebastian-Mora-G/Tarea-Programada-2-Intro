@@ -1,5 +1,5 @@
 class Jugador:
-    def __init__(self, fila, columna):
+    def __init__(self, fila, columna): #Nota: y si le agregamos a jugador un atributo "username" o algo así? Además del puntaje, con el fin de q sea más fácil tratarlo con archivos
         self.fila = fila
         self.columna = columna
         self.simbolo = "★"

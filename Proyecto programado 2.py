@@ -71,6 +71,55 @@ def buscar_top_5(lista:list): #van de Mayor a Menor
     return top_5
 #----------------------------------------------------------------------------------
 
+top_jugadores_escapa = []
+top_jugadores_caza = []
+
+#COMMONS(Archivos)-----------------------------------------------------------------
+
+def salvar_tabla_puntajes(): 
+    """
+    Salva en 2 archivos distintos para el top 5 de Escapa y el top 5 de caza
+    """
+    global top_jugadores_escapa, top_jugadores_caza
+    top_5_escapa = buscar_top_5(top_jugadores_escapa)
+    top_5_caza = buscar_top_5(top_jugadores_caza)
+
+    with open("top_5_escapa.txt","w") as file:
+        file.write(top_5_escapa)
+    with open("top_5_caza.txt","w") as file:
+        file.write(top_5_caza)
+        
+
+def leer_top_5_escapa():
+    """
+    Lee el archivo de escapa
+    """
+    global top_jugadores_escapa
+    try: 
+        with open("top_5_escapa.txt","r") as file:
+            top_jugadores_escapa = eval(file.read())
+    except FileNotFoundError:
+        top_jugadores_escapa = "No hay jugadores en el top 5"
+
+def leer_top_5_caza():
+    """
+    Lee el archivo de Caza
+    """
+    global top_jugadores_caza
+    try: 
+        with open("top_5_caza.txt","r") as file:
+            top_jugadores_caza = eval(file.read())
+    except FileNotFoundError:
+        top_jugadores_caza = "No hay jugadores en el top 5"
+
+def buscar_top_5(lista:list): #van de Mayor a Menor
+    lista.sort(key=lambda x: x[1], reverse=True)
+    if len(lista) < 5:
+        return lista
+    top_5 = lista[0] + lista[1] + lista[2] + lista[3] + lista[4]
+    return top_5
+#----------------------------------------------------------------------------------
+
 """///--------------FUNCIONES GUI---------------///"""
 class Gui:
     
@@ -122,7 +171,7 @@ class Gui:
                 messagebox.showinfo("Info", mensaje)
             except:
                 messagebox.showinfo("Error", "No hay jugadores en este Top")
-        #----------------------------------------------------------------------------------------------------
+        #-------------------------------------------------------------------------------------------------------------
 
         ventana = tk.Tk()
         ventana.title("Registro Jugador")
