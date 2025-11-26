@@ -206,9 +206,6 @@ class Gui:
         
         return mapa
 
-
-
-
     #E: mapa: matriz del juego, jugador: objeto Jugador, modo: modo actual
     #S: Lista de objetos Enemigo
     #R: mapa debe tener dimensiones válidas
@@ -219,83 +216,30 @@ class Gui:
         filas = len(mapa)
         columnas = len(mapa[0])
         
-        if modo == "escapa":
-            #Modo Escapa: enemigos en posiciones aleatorias distribuidas
-            posiciones_ocupadas = set()
-            
-            for _ in range(cantidad):
-                #Buscar posición aleatoria válida (camino) que no sea la del jugador
-                intentos = 0
-                while intentos < 50:
-                    fila = random.randint(0, filas-1)
-                    columna = random.randint(0, columnas-1)
-                    posicion = (fila, columna)
-                    
-                    if (mapa[fila][columna] == 1 and 
-                        (fila != jugador.fila or columna != jugador.columna) and
-                        posicion not in posiciones_ocupadas):
-                        
-                        enemigos.append(enemigo_clase.Enemigo(fila, columna))
-                        posiciones_ocupadas.add(posicion)
-                        break
-                    intentos += 1
+        # Para AMBOS modos, usar posiciones aleatorias
+        posiciones_ocupadas = set()
+        
+        for _ in range(cantidad):
+            # Buscar posición aleatoria válida (camino) que no sea la del jugador
+            intentos = 0
+            while intentos < 50:
+                fila = random.randint(0, filas-1)
+                columna = random.randint(0, columnas-1)
+                posicion = (fila, columna)
                 
-                if len(enemigos) < _ + 1:
-                    break
+                if (mapa[fila][columna] == 1 and 
+                    (fila != jugador.fila or columna != jugador.columna) and
+                    posicion not in posiciones_ocupadas):
                     
-        else:
-            #Modo Cazador: enemigos juntos en el centro
-            centro_fila = filas // 2
-            centro_columna = columnas // 2
-            
-            #Crear más posiciones alrededor del centro según la cantidad necesaria
-            posiciones_centro = []
-            radio = 2  #Radio máximo alrededor del centro
-            
-            #Generar todas las posiciones dentro del radio
-            for i in range(-radio, radio + 1):
-                for j in range(-radio, radio + 1):
-                    #Excluir la posición del jugador si está en el centro
-                    if (centro_fila + i != jugador.fila or centro_columna + j != jugador.columna):
-                        posiciones_centro.append((centro_fila + i, centro_columna + j))
-            
-            #Mezclar las posiciones para variedad
-            random.shuffle(posiciones_centro)
-            
-            #Tomar solo posiciones válidas hasta alcanzar la cantidad necesaria
-            enemigos_creados = 0
-            for pos in posiciones_centro:
-                if enemigos_creados >= cantidad:
-                    break
-                    
-                fila, columna = pos
-                if (0 <= fila < filas and 0 <= columna < columnas and 
-                    mapa[fila][columna] == 1):
                     enemigos.append(enemigo_clase.Enemigo(fila, columna))
-                    enemigos_creados += 1
+                    posiciones_ocupadas.add(posicion)
+                    break
+                intentos += 1
             
-            #Si aún no tenemos suficientes enemigos, buscar posiciones aleatorias cerca del centro
-            if enemigos_creados < cantidad:
-                for _ in range(cantidad - enemigos_creados):
-                    intentos = 0
-                    while intentos < 20:
-                        #Buscar posiciones cerca del centro (radio más amplio)
-                        fila = centro_fila + random.randint(-3, 3)
-                        columna = centro_columna + random.randint(-3, 3)
-                        posicion = (fila, columna)
-                        
-                        if (0 <= fila < filas and 0 <= columna < columnas and 
-                            mapa[fila][columna] == 1 and
-                            (fila != jugador.fila or columna != jugador.columna) and
-                            posicion not in [(e.fila, e.columna) for e in enemigos]):
-                            
-                            enemigos.append(enemigo_clase.Enemigo(fila, columna))
-                            break
-                        intentos += 1
+            if len(enemigos) < _ + 1:
+                break
         
         return enemigos
-
-    
 
     #E: Ninguna
     #S: Crea y muestra ventana con mapa interactivo
@@ -478,24 +422,34 @@ class Gui:
         #R: Ninguna
         #Funcionalidad: Terminar partida de manera controlada
         def finalizar_juego(mensaje):
-            messagebox.showinfo("Info", mensaje) #Mensaje de si escapó o no, y cuántos ptos ganó
-            respuesta = messagebox.askyesno("Salir o no", "¿Desea volver a jugar?", default="no") #Retorna True o False
+            global juego_activo
+            juego_activo = False  #Detener el juego inmediatamente
+            
+            messagebox.showinfo("Info", mensaje)
+            respuesta = messagebox.askyesno("Salir o no", "¿Desea volver a jugar?", default="no")
+            
             if not respuesta: #NO
-                global juego_activo
-                juego_activo = False
-                messagebox.showinfo("Fin del Juego", "Gracias por jugar!") #TODO: que guarde en archivo de top 5(caza y jugador). 
-                mapa_ventana.destroy()                                     #Buscar "#TODO" y el primero q salga, dice lo q ocupamos
+                messagebox.showinfo("Fin del Juego", "Gracias por jugar!")
+                # TODO: Guardar en archivo de top 5
+                mapa_ventana.destroy()
+                Gui.registrar_jugador()
             else:            #SI
                 mapa_ventana.destroy()
+                #Reiniciar variables globales
+                global modo_actual, dificultad_actual, puntaje_actual, enemigos, tiempo_inicio
+                modo_actual = "escapa"
+                dificultad_actual = "facil"
+                puntaje_actual = 0
+                enemigos = []
+                tiempo_inicio = 0
+                juego_activo = True
                 Gui.mostrar_mapa()
         
+        #E: Ninguna
+        #S: Verifica condiciones de victoria/derrota y muestra mensajes
+        #R: Ninguna
+        #Funcionalidad: Controlar estado del juego
         def verificar_estado_juego():
-            """
-            E: Ninguna \n
-            S: Verifica condiciones de victoria/derrota y muestra mensajes\n
-            R: Ninguna\n
-            Funcionalidad: Controlar estado del juego
-            """
             if not juego_activo:
                 return
                 
@@ -526,23 +480,21 @@ class Gui:
                 puntaje_final = Modficacion.calcular_puntaje(tiempo_transcurrido)
                 finalizar_juego(f"¡Escapaste!\nTiempo: {int(tiempo_transcurrido)} segundos\nPuntaje final: {puntaje_final}")
         
+        #E: Ninguna
+        #S: Mueve todos los enemigos según el modo actual y los redibuja
+        #R: Ninguna
+        #Funcionalidad: Actualizar posición de enemigos automáticamente
         def mover_enemigos_automatico():
-            """
-            E: Ninguna \n
-            S: Mueve todos los enemigos según el modo actual y los redibuja\n
-            R: Ninguna\n
-            Funcionalidad: Actualizar posición de enemigos automáticamente
-            """
             if not juego_activo:
                 return
                 
             for enemigo in enemigos:
                 if modo_actual == "cazador":
                     #En modo cazador, enemigos van hacia la meta (esquina inferior derecha)
-                    enemigo.mover_hacia_meta(len(mapa)-1, len(mapa[0])-1, len(mapa), len(mapa[0]))
+                    enemigo.mover_hacia_meta(len(mapa)-1, len(mapa[0])-1, len(mapa), len(mapa[0]), enemigos)
                 else:
                     #En modo escapa, enemigos persiguen/huyen según comportamiento normal
-                    enemigo.mover(jugador.fila, jugador.columna, modo_actual, len(mapa), len(mapa[0]))
+                    enemigo.mover(jugador.fila, jugador.columna, modo_actual, len(mapa), len(mapa[0]), enemigos)
             
             dibujar_enemigos()
             verificar_estado_juego()
@@ -552,20 +504,15 @@ class Gui:
                 velocidad = Modficacion.obtener_velocidad_enemigos()
                 mapa_ventana.after(velocidad, mover_enemigos_automatico)
         
-        
+        #E: Evento de teclado
+        #S: Mueve al jugador y actualiza la visualización
+        #R: Tecla debe ser una flecha direccional
+        #Funcionalidad: Manejar movimiento del jugador con teclado
         def tecla_presionada(event):
-            """
-            E: Evento de teclado \n
-            S: Mueve al jugador y actualiza la visualización \n
-            R: Tecla debe ser una flecha direccional\n
-            Funcionalidad: Manejar movimiento del jugador con teclado
-            """
             if not juego_activo:
                 return
                 
             if event.keysym == "Up":
-                jugador.mover("up", len(mapa), len(mapa[0]))  #Usar método mover de la clase Jugador
-                dibujar_jugador() 
                 jugador.mover("up", len(mapa), len(mapa[0]))
             elif event.keysym == "Down":
                 jugador.mover("down", len(mapa), len(mapa[0]))
@@ -589,7 +536,6 @@ class Gui:
         
         #Configurar bindings de teclado
         mapa_ventana.bind("<KeyPress>", tecla_presionada)
-        mapa_ventana.focus_set()  #Asegurar que la ventana reciba eventos de teclado
         mapa_ventana.focus_set()
         
         mapa_ventana.mainloop()
@@ -622,9 +568,9 @@ class Modficacion:
 
     def cambiar_modo():
         """
-        E: Ninguna \n
-        S: Cambia el modo de juego entre "escapa" y "cazador" \n
-        R: Ninguna\n
+        E: Ninguna 
+        S: Cambia el modo de juego entre "escapa" y "cazador" 
+        R: Ninguna
         Funcionalidad: Alternar modo de juego
         """
         global modo_actual
@@ -635,19 +581,19 @@ class Modficacion:
         messagebox.showinfo("Modo Cambiado", f"Modo actual: {modo_actual.capitalize()}")
     def cambiar_dificultad(nueva_dificultad):
         """
-        E: nueva_dificultad: string con la dificultad \n
-        S: Cambia la dificultad actual del juego \n
-        R: nueva_dificultad debe ser "facil", "intermedio" o "dificil" \n
-        Funcionalidad: Establecer nivel de dificultad \n
+        E: nueva_dificultad: string con la dificultad 
+        S: Cambia la dificultad actual del juego 
+        R: nueva_dificultad debe ser "facil", "intermedio" o "dificil" 
+        Funcionalidad: Establecer nivel de dificultad 
         """
         global dificultad_actual
         dificultad_actual = nueva_dificultad
         messagebox.showinfo("Dificultad Cambiada", f"Dificultad: {dificultad_actual.capitalize()}")
 
     def obtener_cantidad_enemigos():
-        """E: Ninguna\n
-        S: Retorna cantidad de enemigos según dificultad\n
-        R: Ninguna\n
+        """E: Ninguna
+        S: Retorna cantidad de enemigos según dificultad
+        R: Ninguna
         Funcionalidad: Determinar número de enemigos basado en dificultad"""
         if dificultad_actual == "facil":
             return 5  # Fácil: 5 enemigos
@@ -657,9 +603,9 @@ class Modficacion:
             return 9  # Difícil: 9 enemigos
 
     def obtener_velocidad_enemigos():
-        """E: Ninguna \n
-        S: Retorna intervalo de movimiento de enemigos en milisegundos según dificultad \n
-        R: dificultad_actual debe estar definida \n
+        """E: Ninguna 
+        S: Retorna intervalo de movimiento de enemigos en milisegundos según dificultad 
+        R: dificultad_actual debe estar definida 
         Funcionalidad: Determinar velocidad de enemigos basado en dificultad"""
         if dificultad_actual == "facil":
             return 2000  # 2 segundos
@@ -670,9 +616,9 @@ class Modficacion:
 
     def calcular_puntaje(tiempo_transcurrido):
         """
-        E: tiempo_transcurrido: tiempo en segundos desde el inicio \n
-        S: Retorna puntaje calculado basado en tiempo y dificultad\n
-        R: tiempo_transcurrido debe ser un número positivo\n
+        E: tiempo_transcurrido: tiempo en segundos desde el inicio 
+        S: Retorna puntaje calculado basado en tiempo y dificultad
+        R: tiempo_transcurrido debe ser un número positivo
         Funcionalidad: Calcular puntaje basado en tiempo (menos tiempo = más puntos)
         """
         #Puntaje base máximo por dificultad
@@ -688,5 +634,6 @@ class Modficacion:
         puntaje_calculado = max(puntaje_maximo - int(tiempo_transcurrido * 10), 0)
         
         return puntaje_calculado
+
 if __name__ == "__main__":
     Gui.registrar_jugador()
