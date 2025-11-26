@@ -151,7 +151,7 @@ class Gui:
         #Funcionalidad: Procesar nombre ingresado
         def procesar_registro():
             global nombre_jugador
-            nombre = entry_nombre.get().strip().capitalize()
+            nombre = entry_nombre.get().strip()
             if nombre:
                 nombre_jugador = nombre
                 #jugador.nombre_usuario = nombre
@@ -344,6 +344,7 @@ class Gui:
         label_tiempo = tk.Label(opciones_frame, text="Tiempo: 0s", 
                             bg="lightgray", font=("Arial", 10))
         label_tiempo.pack(pady=10)
+        #TODO: Poner botón para salir, guardando la info en top 5. Necesario para modo Cazador, ya que no se termina pq no te atrapan
         
         #E: Ninguna
         #S: Dibuja el mapa en la interfaz gráfica
@@ -484,11 +485,21 @@ class Gui:
                         #Jugador pierde en modo escapa - SIN PUNTAJE
                         finalizar_juego("¡Te atraparon!\nNo obtienes puntaje por ser atrapado.")
                         return
+                    else:
+                        print("Atrapado") #TODO: Sumar puntos que gana el jugador al atrapar a un enemigo
+                        while True:
+                            fila = random.randint(0, len(mapa)-1)
+                            columna = random.randint(0, len(mapa[0])-1)
+                            if mapa[fila][columna] == 1:
+                                enemigo.fila = fila
+                                enemigo.columna = columna
+                                break
             
             #Verificar si enemigos llegaron a la meta en modo cazador
             if modo_actual == "cazador":
                 for enemigo in enemigos:
                     if enemigo.fila == len(mapa)-1 and enemigo.columna == len(mapa[0])-1:
+                        #TODO: Restar al jugador los puntos que se pierden cuando un enemigo llega a la meta
                         #Reubicar enemigo en posición aleatoria
                         while True:
                             fila = random.randint(0, len(mapa)-1)
