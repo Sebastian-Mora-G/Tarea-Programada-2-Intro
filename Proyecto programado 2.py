@@ -67,21 +67,23 @@ top_jugadores_caza = []
 class Archivo:
     def salvar_tabla_puntajes(): 
         """
-        Salva en 2 archivos distintos para el top 5 de Escapa y el top 5 de caza. \n
-        No hay que preocuparse por formato. Lo único, que a la lista de top_jugadores_escapa/caza
-        se añadan los elementos así: ["nombre_jugador", puntaje(int)]
+        Salva en 2 archivos distintos para el top 5 de Escapa y el top 5 de caza.
         """
         global top_jugadores_escapa, top_jugadores_caza
-        top_5_escapa = Archivo.buscar_top_5(top_jugadores_escapa)
-        top_5_caza = Archivo.buscar_top_5(top_jugadores_caza)
-
-        top_5_escapa = str(top_5_escapa)
-        top_5_caza = str(top_5_caza)
-    
-        with open("top_5_escapa.txt","w") as file:
-            file.write(top_5_escapa)
-        with open("top_5_caza.txt","w") as file:
-            file.write(top_5_caza)
+        
+        try:
+            #Guardar top escapa
+            with open("top_5_escapa.txt", "w", encoding='utf-8') as file:
+                file.write(str(top_jugadores_escapa))
+        except Exception as e:
+            print(f"Error guardando top escapa: {e}")
+        
+        try:
+            #Guardar top caza
+            with open("top_5_caza.txt", "w", encoding='utf-8') as file:
+                file.write(str(top_jugadores_caza))
+        except Exception as e:
+            print(f"Error guardando top caza: {e}")
             
 
     def leer_top_5_escapa():
@@ -435,34 +437,37 @@ class Gui:
         #R: Ninguna
         #Funcionalidad: Terminar partida de manera controlada
         def finalizar_juego(mensaje):
-            global juego_activo
-            juego_activo = False  #Detener el juego inmediatamente
-            
-            messagebox.showinfo("Info", mensaje)
-            respuesta = messagebox.askyesno("Salir o no", "¿Desea volver a jugar?", default="no")
-            
-            if not respuesta: #NO
-                messagebox.showinfo("Fin del Juego", "Gracias por jugar!")
-                #jugador.modo = modo_actual
-                lista_del_jugador = [jugador.nombre_usuario, jugador.puntaje]
-                if jugador.modo == "escapa":
-                    top_jugadores_escapa.append(lista_del_jugador)
-                else:
-                    top_jugadores_caza.append(lista_del_jugador)
-                Archivo.salvar_tabla_puntajes()
-                mapa_ventana.destroy()
-                Gui.registrar_jugador()
-            else:            #SI
-                mapa_ventana.destroy()
-                #Reiniciar variables globales
-                #global modo_actual, dificultad_actual, puntaje_actual, enemigos, tiempo_inicio
-                modo_actual = "escapa"
-                dificultad_actual = "facil"
-                puntaje_actual = 0
-                enemigos = []
-                tiempo_inicio = 0
-                juego_activo = True
-                Gui.mostrar_mapa()
+        global juego_activo
+        
+        juego_activo = False  #Detener el juego inmediatamente
+        
+        #GUARDAR INMEDIATAMENTE, antes de cualquier messagebox
+        jugador.modo = modo_actual
+        lista_del_jugador = [jugador.nombre_usuario, jugador.puntaje]
+        if jugador.modo == "escapa":
+            top_jugadores_escapa.append(lista_del_jugador)
+        else:
+            top_jugadores_caza.append(lista_del_jugador)
+        Archivo.salvar_tabla_puntajes()
+        
+        #mostrar los messagebox
+        messagebox.showinfo("Info", mensaje)
+        respuesta = messagebox.askyesno("Salir o no", "¿Desea volver a jugar?", default="no")
+        
+        if not respuesta: #NO
+            messagebox.showinfo("Fin del Juego", "Gracias por jugar!")
+            mapa_ventana.destroy()
+            Gui.registrar_jugador()
+        else:            #SI
+            mapa_ventana.destroy()
+            #Reiniciar variables globales
+            modo_actual = "escapa"
+            dificultad_actual = "facil"
+            puntaje_actual = 0
+            enemigos = []
+            tiempo_inicio = 0
+            juego_activo = True
+            Gui.mostrar_mapa()
         
         #E: Ninguna
         #S: Verifica condiciones de victoria/derrota y muestra mensajes
