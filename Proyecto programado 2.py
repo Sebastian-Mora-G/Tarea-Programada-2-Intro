@@ -2,6 +2,34 @@
     ! Fecha de entrega: 28-11-2025
     TODO: cuando terminemos, hay que hacer el repositorio público en GitHub para la evaluacion 
     """
+"""
+class GUI:
+    registrar_jugador
+    enter_presionado
+    procesar_registro
+    generar_mapa_aleatorio
+    crear_enemigos
+    mostrar_mapa
+    actualizar_boton_modo
+    reiniciar_enemigos
+    dibujar_mapa
+    dibujar_jugador
+    dibujar_enemigos
+    actualizar_tiempo
+    finalizar_juego
+    mover_enemigos_automatico
+    verificar_estado_juego
+    tecla_presionada
+
+class Funcionalidad:
+    mostrar_top_5_escapa X
+    mostrar_top_5_caza X
+    cambiar_modo X
+    cambiar_dificultad X
+    obtener_cant_enemigos X
+    obtener_velocidad_enemigos
+    calcular_puntaje
+"""
 import tkinter as tk
 from tkinter import messagebox #Iconos posibles: 'error', 'info', 'question', 'warning'
 import time
@@ -151,26 +179,6 @@ class Gui:
             else:
                 messagebox.showerror("Error", "Tu nombre no puede ser vacío, escribe uno válido", icon="warning")
         #TOP 5----------------------------------------------------------------------------------------------------
-        def mostrar_top_5_escapa():
-            mensaje = ""
-            leer_top_5_escapa()
-            global top_jugadores_escapa
-            try:
-                for jugador in top_jugadores_escapa:
-                    mensaje += f"Jugador {jugador[0]} | Puntuación: {jugador[1]}"
-                messagebox.showinfo("Info", mensaje)
-            except:
-                messagebox.showinfo("Error", "No hay jugadores en este Top")
-        def mostrar_top_5_caza():
-            mensaje = ""
-            leer_top_5_caza()
-            global top_jugadores_caza
-            try:
-                for jugador in top_jugadores_caza:
-                    mensaje += f"Jugador {jugador[0]} | Puntuación: {jugador[1]}"
-                messagebox.showinfo("Info", mensaje)
-            except:
-                messagebox.showinfo("Error", "No hay jugadores en este Top")
         #-------------------------------------------------------------------------------------------------------------
 
         ventana = tk.Tk()
@@ -188,9 +196,9 @@ class Gui:
         boton_registrar = tk.Button(ventana, text="Comenzar Juego", command=procesar_registro)
         boton_registrar.pack(pady=10)
 
-        boton_puntaje_escapa = tk.Button(ventana,text="Top 5(modo escapa)" ,command=mostrar_top_5_escapa);boton_puntaje_escapa.pack(anchor="center")
+        boton_puntaje_escapa = tk.Button(ventana,text="Top 5(modo escapa)" ,command=Modficacion.mostrar_top_5_escapa);boton_puntaje_escapa.pack(anchor="center")
         
-        boton_puntaje_cazador = tk.Button(ventana,text="Top 5(modo cazador)" ,command=mostrar_top_5_caza);boton_puntaje_cazador.pack(anchor="center")
+        boton_puntaje_cazador = tk.Button(ventana,text="Top 5(modo cazador)" ,command=Modficacion.mostrar_top_5_caza);boton_puntaje_cazador.pack(anchor="center")
 
         boton_salir = tk.Button(ventana, text="Salir", command=ventana.destroy)
         boton_salir.pack()
@@ -230,50 +238,8 @@ class Gui:
         
         return mapa
 
-    #E: Ninguna
-    #S: Cambia el modo de juego entre "escapa" y "cazador"
-    #R: Ninguna
-    #Funcionalidad: Alternar modo de juego
-    def cambiar_modo():
-        global modo_actual
-        if modo_actual == "escapa":
-            modo_actual = "cazador"
-        else:
-            modo_actual = "escapa"
-        messagebox.showinfo("Modo Cambiado", f"Modo actual: {modo_actual.capitalize()}")
 
-    #E: nueva_dificultad: string con la dificultad
-    #S: Cambia la dificultad actual del juego
-    #R: nueva_dificultad debe ser "facil", "intermedio" o "dificil"
-    #Funcionalidad: Establecer nivel de dificultad
-    def cambiar_dificultad(nueva_dificultad):
-        global dificultad_actual
-        dificultad_actual = nueva_dificultad
-        messagebox.showinfo("Dificultad Cambiada", f"Dificultad: {dificultad_actual.capitalize()}")
 
-    #E: Ninguna
-    #S: Retorna cantidad de enemigos según dificultad
-    #R: Ninguna
-    #Funcionalidad: Determinar número de enemigos basado en dificultad
-    def obtener_cantidad_enemigos():
-        if dificultad_actual == "facil":
-            return 5  # Fácil: 5 enemigos
-        elif dificultad_actual == "intermedio":
-            return 7  # Intermedio: 7 enemigos
-        else: #dificil
-            return 9  # Difícil: 9 enemigos
-
-    #E: Ninguna
-    #S: Retorna intervalo de movimiento de enemigos en milisegundos según dificultad
-    #R: dificultad_actual debe estar definida
-    #Funcionalidad: Determinar velocidad de enemigos basado en dificultad
-    def obtener_velocidad_enemigos():
-        if dificultad_actual == "facil":
-            return 2000  # 2 segundos
-        elif dificultad_actual == "intermedio":
-            return 1500  # 1.5 segundos
-        else: #dificil
-            return 1000  # 1 segundo
 
     #E: mapa: matriz del juego, jugador: objeto Jugador, modo: modo actual
     #S: Lista de objetos Enemigo
@@ -281,7 +247,7 @@ class Gui:
     #Funcionalidad: Crear enemigos en posiciones según el modo
     def crear_enemigos(mapa, jugador, modo):
         enemigos = []
-        cantidad = Gui.obtener_cantidad_enemigos()
+        cantidad = Modficacion.obtener_cantidad_enemigos()
         filas = len(mapa)
         columnas = len(mapa[0])
         
@@ -361,24 +327,7 @@ class Gui:
         
         return enemigos
 
-    #E: tiempo_transcurrido: tiempo en segundos desde el inicio
-    #S: Retorna puntaje calculado basado en tiempo y dificultad
-    #R: tiempo_transcurrido debe ser un número positivo
-    #Funcionalidad: Calcular puntaje basado en tiempo (menos tiempo = más puntos)
-    def calcular_puntaje(tiempo_transcurrido):
-        #Puntaje base máximo por dificultad
-        if dificultad_actual == "facil":
-            puntaje_maximo = 500
-        elif dificultad_actual == "intermedio":
-            puntaje_maximo = 750
-        else: #dificil
-            puntaje_maximo = 1000
-        
-        #Fórmula: puntaje = puntaje_maximo - (tiempo_en_segundos * 10)
-        #Esto significa que por cada segundo que pase, pierdes 10 puntos
-        puntaje_calculado = max(puntaje_maximo - int(tiempo_transcurrido * 10), 0)
-        
-        return puntaje_calculado
+    
 
     #E: Ninguna
     #S: Crea y muestra ventana con mapa interactivo
@@ -433,7 +382,7 @@ class Gui:
         
         #Botones de control
         boton_modo = tk.Button(opciones_frame, text=f"Modo: {modo_actual.capitalize()}", 
-                            command=lambda: [Gui.cambiar_modo(), actualizar_boton_modo(), reiniciar_enemigos()], 
+                            command=lambda: [Modficacion.cambiar_modo(), actualizar_boton_modo(), reiniciar_enemigos()], 
                             width=15)
         boton_modo.pack(pady=10)
         
@@ -445,17 +394,17 @@ class Gui:
         label_dificultad.pack()
         
         boton_facil = tk.Button(dificultad_frame, text="Fácil", 
-                            command=lambda: [Gui.cambiar_dificultad("facil"), reiniciar_enemigos()], 
+                            command=lambda: [Modficacion.cambiar_dificultad("facil"), reiniciar_enemigos()], 
                             width=10)
         boton_facil.pack(pady=2)
         
         boton_intermedio = tk.Button(dificultad_frame, text="Intermedio", 
-                                    command=lambda: [Gui.cambiar_dificultad("intermedio"), reiniciar_enemigos()], 
+                                    command=lambda: [Modficacion.cambiar_dificultad("intermedio"), reiniciar_enemigos()], 
                                     width=10)
         boton_intermedio.pack(pady=2)
         
         boton_dificil = tk.Button(dificultad_frame, text="Difícil", 
-                                command=lambda: [Gui.cambiar_dificultad("dificil"), reiniciar_enemigos()], 
+                                command=lambda: [Modficacion.cambiar_dificultad("dificil"), reiniciar_enemigos()], 
                                 width=10)
         boton_dificil.pack(pady=2)
         
@@ -564,13 +513,15 @@ class Gui:
             global juego_activo
             juego_activo = False
             messagebox.showinfo("Fin del Juego", mensaje)
-            mapa_ventana.destroy()
+            mapa_ventana.destroy() #TODO: Poner opción de volver a jugar con mismo usuario
         
-        #E: Ninguna
-        #S: Verifica condiciones de victoria/derrota y muestra mensajes
-        #R: Ninguna
-        #Funcionalidad: Controlar estado del juego
         def verificar_estado_juego():
+            """
+            E: Ninguna \n
+            S: Verifica condiciones de victoria/derrota y muestra mensajes\n
+            R: Ninguna\n
+            Funcionalidad: Controlar estado del juego
+            """
             if not juego_activo:
                 return
                 
@@ -598,14 +549,16 @@ class Gui:
             #Verificar si jugador llegó al final (modo escapa) - SOLO AQUÍ SE OBTIENE PUNTAJE
             if modo_actual == "escapa" and jugador.fila == len(mapa)-1 and jugador.columna == len(mapa[0])-1:
                 tiempo_transcurrido = time.time() - tiempo_inicio
-                puntaje_final = Gui.calcular_puntaje(tiempo_transcurrido)
+                puntaje_final = Modficacion.calcular_puntaje(tiempo_transcurrido)
                 finalizar_juego(f"¡Escapaste!\nTiempo: {int(tiempo_transcurrido)} segundos\nPuntaje final: {puntaje_final}")
         
-        #E: Ninguna
-        #S: Mueve todos los enemigos según el modo actual y los redibuja
-        #R: Ninguna
-        #Funcionalidad: Actualizar posición de enemigos automáticamente
         def mover_enemigos_automatico():
+            """
+            E: Ninguna \n
+            S: Mueve todos los enemigos según el modo actual y los redibuja\n
+            R: Ninguna\n
+            Funcionalidad: Actualizar posición de enemigos automáticamente
+            """
             if not juego_activo:
                 return
                 
@@ -622,14 +575,17 @@ class Gui:
             
             #Programar próximo movimiento solo si el juego sigue activo
             if juego_activo:
-                velocidad = Gui.obtener_velocidad_enemigos()
+                velocidad = Modficacion.obtener_velocidad_enemigos()
                 mapa_ventana.after(velocidad, mover_enemigos_automatico)
         
-        #E: Evento de teclado
-        #S: Mueve al jugador y actualiza la visualización
-        #R: Tecla debe ser una flecha direccional
-        #Funcionalidad: Manejar movimiento del jugador con teclado
+        
         def tecla_presionada(event):
+            """
+            E: Evento de teclado \n
+            S: Mueve al jugador y actualiza la visualización \n
+            R: Tecla debe ser una flecha direccional\n
+            Funcionalidad: Manejar movimiento del jugador con teclado
+            """
             if not juego_activo:
                 return
                 
@@ -651,7 +607,7 @@ class Gui:
         dibujar_mapa()
         
         #Iniciar movimiento automático de enemigos
-        velocidad = Gui.obtener_velocidad_enemigos()
+        velocidad = Modficacion.obtener_velocidad_enemigos()
         mapa_ventana.after(velocidad, mover_enemigos_automatico)
         
         #Iniciar actualización de tiempo
@@ -664,5 +620,99 @@ class Gui:
         
         mapa_ventana.mainloop()
 
+class Modficacion:
+    def mostrar_top_5_escapa():
+            """
+            Muestra el top 5 del modo escapa, leyendo el global top_jugadores escapa. \n
+            Usa la función leer_top_5_escapa para actualizar ese valor global
+            """
+            mensaje = ""
+            leer_top_5_escapa()
+            global top_jugadores_escapa
+            try:
+                for jugador in top_jugadores_escapa:
+                    mensaje += f"Jugador {jugador[0]} | Puntuación: {jugador[1]}"
+                messagebox.showinfo("Info", mensaje)
+            except:
+                messagebox.showinfo("Error", "No hay jugadores en este Top")
+    def mostrar_top_5_caza():
+            mensaje = ""
+            leer_top_5_caza()
+            global top_jugadores_caza
+            try:
+                for jugador in top_jugadores_caza:
+                    mensaje += f"Jugador {jugador[0]} | Puntuación: {jugador[1]}"
+                messagebox.showinfo("Info", mensaje)
+            except:
+                messagebox.showinfo("Error", "No hay jugadores en este Top")
+
+    def cambiar_modo():
+        """
+        E: Ninguna \n
+        S: Cambia el modo de juego entre "escapa" y "cazador" \n
+        R: Ninguna\n
+        Funcionalidad: Alternar modo de juego
+        """
+        global modo_actual
+        if modo_actual == "escapa":
+            modo_actual = "cazador"
+        else:
+            modo_actual = "escapa"
+        messagebox.showinfo("Modo Cambiado", f"Modo actual: {modo_actual.capitalize()}")
+    def cambiar_dificultad(nueva_dificultad):
+        """
+        E: nueva_dificultad: string con la dificultad \n
+        S: Cambia la dificultad actual del juego \n
+        R: nueva_dificultad debe ser "facil", "intermedio" o "dificil" \n
+        Funcionalidad: Establecer nivel de dificultad \n
+        """
+        global dificultad_actual
+        dificultad_actual = nueva_dificultad
+        messagebox.showinfo("Dificultad Cambiada", f"Dificultad: {dificultad_actual.capitalize()}")
+
+    def obtener_cantidad_enemigos():
+        """E: Ninguna\n
+        S: Retorna cantidad de enemigos según dificultad\n
+        R: Ninguna\n
+        Funcionalidad: Determinar número de enemigos basado en dificultad"""
+        if dificultad_actual == "facil":
+            return 5  # Fácil: 5 enemigos
+        elif dificultad_actual == "intermedio":
+            return 7  # Intermedio: 7 enemigos
+        else: #dificil
+            return 9  # Difícil: 9 enemigos
+
+    def obtener_velocidad_enemigos():
+        """E: Ninguna \n
+        S: Retorna intervalo de movimiento de enemigos en milisegundos según dificultad \n
+        R: dificultad_actual debe estar definida \n
+        Funcionalidad: Determinar velocidad de enemigos basado en dificultad"""
+        if dificultad_actual == "facil":
+            return 2000  # 2 segundos
+        elif dificultad_actual == "intermedio":
+            return 1500  # 1.5 segundos
+        else: #dificil
+            return 1000  # 1 segundo
+
+    def calcular_puntaje(tiempo_transcurrido):
+        """
+        E: tiempo_transcurrido: tiempo en segundos desde el inicio \n
+        S: Retorna puntaje calculado basado en tiempo y dificultad\n
+        R: tiempo_transcurrido debe ser un número positivo\n
+        Funcionalidad: Calcular puntaje basado en tiempo (menos tiempo = más puntos)
+        """
+        #Puntaje base máximo por dificultad
+        if dificultad_actual == "facil":
+            puntaje_maximo = 500
+        elif dificultad_actual == "intermedio":
+            puntaje_maximo = 750
+        else: #dificil
+            puntaje_maximo = 1000
+        
+        #Fórmula: puntaje = puntaje_maximo - (tiempo_en_segundos * 10)
+        #Esto significa que por cada segundo que pase, pierdes 10 puntos
+        puntaje_calculado = max(puntaje_maximo - int(tiempo_transcurrido * 10), 0)
+        
+        return puntaje_calculado
 if __name__ == "__main__":
     Gui.registrar_jugador()
