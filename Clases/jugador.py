@@ -1,7 +1,8 @@
 class Jugador:
-    def __init__(self, fila, columna): 
-        #self.nombre_usuario = nombre_usuario
+    def __init__(self, nombre_usuario, fila, columna): 
+        self.nombre_usuario = nombre_usuario
         self.puntaje = 0 #Se debe modificar al ganar
+        self.modo = "escapa" #Default
         self.fila = fila
         self.columna = columna
         self.simbolo = "★"

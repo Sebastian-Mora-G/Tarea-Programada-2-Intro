@@ -45,7 +45,7 @@ import Clases.jugador as jugador_clase
 import Clases.enemigo as enemigo_clase
 import random
 #Lista global de jugadores
-user_jugadores = []
+nombre_jugador = ""
 #Variables globales de juego
 modo_actual = "escapa"
 dificultad_actual = "facil"
@@ -54,7 +54,7 @@ enemigos = []
 tiempo_inicio = 0
 juego_activo = True  # Variable para controlar si el juego está activo
 
-top_jugadores_escapa = [] #TODO: Y si solo añadimos todos los jugadores que entren al modo? Asi salvar_tabla_punatjes funciona mejor
+top_jugadores_escapa = []
 top_jugadores_caza = []
 
 #COMMONS(Archivos)-----------------------------------------------------------------
@@ -75,6 +75,9 @@ class Archivo:
         top_5_escapa = Archivo.buscar_top_5(top_jugadores_escapa)
         top_5_caza = Archivo.buscar_top_5(top_jugadores_caza)
 
+        top_5_escapa = str(top_5_escapa)
+        top_5_caza = str(top_5_caza)
+    
         with open("top_5_escapa.txt","w") as file:
             file.write(top_5_escapa)
         with open("top_5_caza.txt","w") as file:
@@ -89,8 +92,8 @@ class Archivo:
         try: 
             with open("top_5_escapa.txt","r") as file:
                 top_jugadores_escapa = eval(file.read())
-        except FileNotFoundError:
-            top_jugadores_escapa = "No hay jugadores en el top 5"
+        except:
+            top_jugadores_escapa = []
 
     def leer_top_5_caza():
         """
@@ -100,19 +103,28 @@ class Archivo:
         try: 
             with open("top_5_caza.txt","r") as file:
                 top_jugadores_caza = eval(file.read())
-        except FileNotFoundError:
-            top_jugadores_caza = "No hay jugadores en el top 5"
+        except:
+            top_jugadores_caza = []
 
     def buscar_top_5(lista:list): #van de Mayor a Menor
         """
         Busca el top 5 de la lista dada. \n
         Usado a la hora de mostrar visualmente
         """
+        top_5 = []
         lista.sort(key=lambda x: x[1], reverse=True)
         if len(lista) < 5:
             return lista
-        top_5 = lista[0] + lista[1] + lista[2] + lista[3] + lista[4]
+        top_5.append(lista[0]);top_5.append(lista[1]);top_5.append(lista[2]);top_5.append(lista[3]);top_5.append(lista[4])
         return top_5
+    
+    
+#Que lea los archivos:
+Archivo.leer_top_5_escapa()
+Archivo.leer_top_5_caza()
+#print(top_jugadores_escapa,"\n" ,top_jugadores_caza)
+#top_temp = str(top_jugadores_escapa)
+#print("\n",top_temp)
 #----------------------------------------------------------------------------------
 
 """///--------------FUNCIONES GUI---------------///"""
@@ -136,10 +148,10 @@ class Gui:
         #R: Nombre no vacío
         #Funcionalidad: Procesar nombre ingresado
         def procesar_registro():
-            nombre = entry_nombre.get().strip()
-            
+            global nombre_jugador
+            nombre = entry_nombre.get().strip().capitalize()
             if nombre:
-                user_jugadores.append(nombre)
+                nombre_jugador = nombre
                 #jugador.nombre_usuario = nombre
                 messagebox.showinfo("Éxito", f"Jugador '{nombre}' registrado")
                 ventana.destroy()
@@ -246,7 +258,7 @@ class Gui:
     #R: Ninguna
     #Funcionalidad: Mostrar mapa del juego con jugador movible y enemigos
     def mostrar_mapa():
-        global enemigos, tiempo_inicio, puntaje_actual, juego_activo
+        global enemigos, modo_actual ,tiempo_inicio, puntaje_actual, juego_activo, top_jugadores_escapa, top_jugadores_caza, dificultad_actual, enemigos, nombre_jugador
         
         mapa_ventana = tk.Tk()
         mapa_ventana.title("Mapa del Juego")
@@ -267,7 +279,8 @@ class Gui:
         
         #Generar mapa y crear jugador
         mapa = Gui.generar_mapa_aleatorio()
-        jugador = jugador_clase.Jugador(0, 0) #SE CREA EL JUGADOR
+        jugador = jugador_clase.Jugador(nombre_jugador,0, 0) #SE CREA EL JUGADOR
+        
         enemigos = Gui.crear_enemigos(mapa, jugador, modo_actual)
         tiempo_inicio = time.time()
         cell_size = 35
@@ -294,7 +307,7 @@ class Gui:
         
         #Botones de control
         boton_modo = tk.Button(opciones_frame, text=f"Modo: {modo_actual.capitalize()}", 
-                            command=lambda: [Modficacion.cambiar_modo(), actualizar_boton_modo(), reiniciar_enemigos()], 
+                            command=lambda: [Modficacion.cambiar_modo(jugador), actualizar_boton_modo(), reiniciar_enemigos()], 
                             width=15)
         boton_modo.pack(pady=10)
         
@@ -430,13 +443,19 @@ class Gui:
             
             if not respuesta: #NO
                 messagebox.showinfo("Fin del Juego", "Gracias por jugar!")
-                # TODO: Guardar en archivo de top 5
+                #jugador.modo = modo_actual
+                lista_del_jugador = [jugador.nombre_usuario, jugador.puntaje]
+                if jugador.modo == "escapa":
+                    top_jugadores_escapa.append(lista_del_jugador)
+                else:
+                    top_jugadores_caza.append(lista_del_jugador)
+                Archivo.salvar_tabla_puntajes()
                 mapa_ventana.destroy()
                 Gui.registrar_jugador()
             else:            #SI
                 mapa_ventana.destroy()
                 #Reiniciar variables globales
-                global modo_actual, dificultad_actual, puntaje_actual, enemigos, tiempo_inicio
+                #global modo_actual, dificultad_actual, puntaje_actual, enemigos, tiempo_inicio
                 modo_actual = "escapa"
                 dificultad_actual = "facil"
                 puntaje_actual = 0
@@ -478,6 +497,7 @@ class Gui:
             if modo_actual == "escapa" and jugador.fila == len(mapa)-1 and jugador.columna == len(mapa[0])-1:
                 tiempo_transcurrido = time.time() - tiempo_inicio
                 puntaje_final = Modficacion.calcular_puntaje(tiempo_transcurrido)
+                jugador.puntaje += puntaje_final
                 finalizar_juego(f"¡Escapaste!\nTiempo: {int(tiempo_transcurrido)} segundos\nPuntaje final: {puntaje_final}")
         
         #E: Ninguna
@@ -551,7 +571,7 @@ class Modficacion:
             global top_jugadores_escapa
             try:
                 for jugador in top_jugadores_escapa:
-                    mensaje += f"Jugador {jugador[0]} | Puntuación: {jugador[1]}"
+                    mensaje += f"Jugador {jugador[0]} | Puntuación: {jugador[1]} \n"
                 messagebox.showinfo("Info", mensaje)
             except:
                 messagebox.showinfo("Error", "No hay jugadores en este Top")
@@ -561,23 +581,27 @@ class Modficacion:
             global top_jugadores_caza
             try:
                 for jugador in top_jugadores_caza:
-                    mensaje += f"Jugador {jugador[0]} | Puntuación: {jugador[1]}"
-                messagebox.showinfo("Info", mensaje)
+                    mensaje += f"Jugador {jugador[0]} | Puntuación: {jugador[1]} \n"
+                if mensaje == "":
+                    messagebox.showinfo("Info", "No hay jugadores en este top aún")
+                else:
+                    messagebox.showinfo("Info", mensaje)
             except:
                 messagebox.showinfo("Error", "No hay jugadores en este Top")
 
-    def cambiar_modo():
+    def cambiar_modo(jugador):
         """
-        E: Ninguna 
-        S: Cambia el modo de juego entre "escapa" y "cazador" 
-        R: Ninguna
+        E: jugador, para que le modifique el self.modo \n
+        S: Cambia el modo de juego entre "escapa" y "cazador" \n
+        R: Ninguna \n
         Funcionalidad: Alternar modo de juego
         """
         global modo_actual
         if modo_actual == "escapa":
-            modo_actual = "cazador"
+            modo_actual = "cazador";jugador.modo = "cazador"
+            
         else:
-            modo_actual = "escapa"
+            modo_actual = "escapa";jugador.modo = "escapa"
         messagebox.showinfo("Modo Cambiado", f"Modo actual: {modo_actual.capitalize()}")
     def cambiar_dificultad(nueva_dificultad):
         """
