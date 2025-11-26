@@ -1,8 +1,12 @@
 """
     ! Fecha de entrega: 28-11-2025
-    TODO: cuando terminemos, hay que hacer el repositorio público en GitHub para la evaluacion 
     """
 """
+class Archivo:
+    salvar_tabla_puntajes
+    leer_top_5_escapa
+    leer_top_5_caza
+    buscar_top_5
 class GUI:
     registrar_jugador
     enter_presionado
@@ -50,102 +54,65 @@ enemigos = []
 tiempo_inicio = 0
 juego_activo = True  # Variable para controlar si el juego está activo
 
-top_jugadores_escapa = []
+top_jugadores_escapa = [] #TODO: Y si solo añadimos todos los jugadores que entren al modo? Asi salvar_tabla_punatjes funciona mejor
 top_jugadores_caza = []
 
 #COMMONS(Archivos)-----------------------------------------------------------------
 
-def salvar_tabla_puntajes(): 
-    """
-    Salva en 2 archivos distintos para el top 5 de Escapa y el top 5 de caza
-    """
-    global top_jugadores_escapa, top_jugadores_caza
-    top_5_escapa = buscar_top_5(top_jugadores_escapa)
-    top_5_caza = buscar_top_5(top_jugadores_caza)
 
-    with open("top_5_escapa.txt","w") as file:
-        file.write(top_5_escapa)
-    with open("top_5_caza.txt","w") as file:
-        file.write(top_5_caza)
-        
-
-def leer_top_5_escapa():
-    """
-    Lee el archivo de escapa
-    """
-    global top_jugadores_escapa
-    try: 
-        with open("top_5_escapa.txt","r") as file:
-            top_jugadores_escapa = eval(file.read())
-    except FileNotFoundError:
-        top_jugadores_escapa = "No hay jugadores en el top 5"
-
-def leer_top_5_caza():
-    """
-    Lee el archivo de Caza
-    """
-    global top_jugadores_caza
-    try: 
-        with open("top_5_caza.txt","r") as file:
-            top_jugadores_caza = eval(file.read())
-    except FileNotFoundError:
-        top_jugadores_caza = "No hay jugadores en el top 5"
-
-def buscar_top_5(lista:list): #van de Mayor a Menor
-    lista.sort(key=lambda x: x[1], reverse=True)
-    if len(lista) < 5:
-        return lista
-    top_5 = lista[0] + lista[1] + lista[2] + lista[3] + lista[4]
-    return top_5
 #----------------------------------------------------------------------------------
 
-top_jugadores_escapa = []
-top_jugadores_caza = []
 
 #COMMONS(Archivos)-----------------------------------------------------------------
+class Archivo:
+    def salvar_tabla_puntajes(): 
+        """
+        Salva en 2 archivos distintos para el top 5 de Escapa y el top 5 de caza. \n
+        No hay que preocuparse por formato. Lo único, que a la lista de top_jugadores_escapa/caza
+        se añadan los elementos así: ["nombre_jugador", puntaje(int)]
+        """
+        global top_jugadores_escapa, top_jugadores_caza
+        top_5_escapa = Archivo.buscar_top_5(top_jugadores_escapa)
+        top_5_caza = Archivo.buscar_top_5(top_jugadores_caza)
 
-def salvar_tabla_puntajes(): 
-    """
-    Salva en 2 archivos distintos para el top 5 de Escapa y el top 5 de caza
-    """
-    global top_jugadores_escapa, top_jugadores_caza
-    top_5_escapa = buscar_top_5(top_jugadores_escapa)
-    top_5_caza = buscar_top_5(top_jugadores_caza)
+        with open("top_5_escapa.txt","w") as file:
+            file.write(top_5_escapa)
+        with open("top_5_caza.txt","w") as file:
+            file.write(top_5_caza)
+            
 
-    with open("top_5_escapa.txt","w") as file:
-        file.write(top_5_escapa)
-    with open("top_5_caza.txt","w") as file:
-        file.write(top_5_caza)
-        
+    def leer_top_5_escapa():
+        """
+        Lee el archivo de escapa
+        """
+        global top_jugadores_escapa
+        try: 
+            with open("top_5_escapa.txt","r") as file:
+                top_jugadores_escapa = eval(file.read())
+        except FileNotFoundError:
+            top_jugadores_escapa = "No hay jugadores en el top 5"
 
-def leer_top_5_escapa():
-    """
-    Lee el archivo de escapa
-    """
-    global top_jugadores_escapa
-    try: 
-        with open("top_5_escapa.txt","r") as file:
-            top_jugadores_escapa = eval(file.read())
-    except FileNotFoundError:
-        top_jugadores_escapa = "No hay jugadores en el top 5"
+    def leer_top_5_caza():
+        """
+        Lee el archivo de Caza
+        """
+        global top_jugadores_caza
+        try: 
+            with open("top_5_caza.txt","r") as file:
+                top_jugadores_caza = eval(file.read())
+        except FileNotFoundError:
+            top_jugadores_caza = "No hay jugadores en el top 5"
 
-def leer_top_5_caza():
-    """
-    Lee el archivo de Caza
-    """
-    global top_jugadores_caza
-    try: 
-        with open("top_5_caza.txt","r") as file:
-            top_jugadores_caza = eval(file.read())
-    except FileNotFoundError:
-        top_jugadores_caza = "No hay jugadores en el top 5"
-
-def buscar_top_5(lista:list): #van de Mayor a Menor
-    lista.sort(key=lambda x: x[1], reverse=True)
-    if len(lista) < 5:
-        return lista
-    top_5 = lista[0] + lista[1] + lista[2] + lista[3] + lista[4]
-    return top_5
+    def buscar_top_5(lista:list): #van de Mayor a Menor
+        """
+        Busca el top 5 de la lista dada. \n
+        Usado a la hora de mostrar visualmente
+        """
+        lista.sort(key=lambda x: x[1], reverse=True)
+        if len(lista) < 5:
+            return lista
+        top_5 = lista[0] + lista[1] + lista[2] + lista[3] + lista[4]
+        return top_5
 #----------------------------------------------------------------------------------
 
 """///--------------FUNCIONES GUI---------------///"""
@@ -173,6 +140,7 @@ class Gui:
             
             if nombre:
                 user_jugadores.append(nombre)
+                #jugador.nombre_usuario = nombre
                 messagebox.showinfo("Éxito", f"Jugador '{nombre}' registrado")
                 ventana.destroy()
                 Gui.mostrar_mapa()
@@ -355,7 +323,7 @@ class Gui:
         
         #Generar mapa y crear jugador
         mapa = Gui.generar_mapa_aleatorio()
-        jugador = jugador_clase.Jugador(0, 0)
+        jugador = jugador_clase.Jugador(0, 0) #SE CREA EL JUGADOR
         enemigos = Gui.crear_enemigos(mapa, jugador, modo_actual)
         tiempo_inicio = time.time()
         cell_size = 35
@@ -510,10 +478,16 @@ class Gui:
         #R: Ninguna
         #Funcionalidad: Terminar partida de manera controlada
         def finalizar_juego(mensaje):
-            global juego_activo
-            juego_activo = False
-            messagebox.showinfo("Fin del Juego", mensaje)
-            mapa_ventana.destroy() #TODO: Poner opción de volver a jugar con mismo usuario
+            messagebox.showinfo("Info", mensaje) #Mensaje de si escapó o no, y cuántos ptos ganó
+            respuesta = messagebox.askyesno("Salir o no", "¿Desea volver a jugar?", default="no") #Retorna True o False
+            if not respuesta: #NO
+                global juego_activo
+                juego_activo = False
+                messagebox.showinfo("Fin del Juego", "Gracias por jugar!") #TODO: que guarde en archivo de top 5(caza y jugador). 
+                mapa_ventana.destroy()                                     #Buscar "#TODO" y el primero q salga, dice lo q ocupamos
+            else:            #SI
+                mapa_ventana.destroy()
+                Gui.mostrar_mapa()
         
         def verificar_estado_juego():
             """
@@ -627,7 +601,7 @@ class Modficacion:
             Usa la función leer_top_5_escapa para actualizar ese valor global
             """
             mensaje = ""
-            leer_top_5_escapa()
+            Archivo.leer_top_5_escapa()
             global top_jugadores_escapa
             try:
                 for jugador in top_jugadores_escapa:
@@ -637,7 +611,7 @@ class Modficacion:
                 messagebox.showinfo("Error", "No hay jugadores en este Top")
     def mostrar_top_5_caza():
             mensaje = ""
-            leer_top_5_caza()
+            Archivo.leer_top_5_caza()
             global top_jugadores_caza
             try:
                 for jugador in top_jugadores_caza:
