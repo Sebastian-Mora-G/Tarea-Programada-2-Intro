@@ -353,6 +353,7 @@ class Gui:
                     y1 = i * cell_size + 5
                     
                     cell_type = mapa[i][j]
+                    
                     canvas = tk.Canvas(mapa_frame, width=cell_size, height=cell_size, 
                                     bg='white', highlightthickness=1, highlightbackground='black')
                     canvas.place(x=x1, y=y1)
@@ -364,10 +365,10 @@ class Gui:
                         canvas.create_text(cell_size/2, cell_size/2, text="META", 
                                         fill='black', font=("Arial", 8, "bold"))
                     elif cell_type == 0:  #Muro
-                        canvas.create_line(0, cell_size/3, cell_size, cell_size/3, width=2)
-                        canvas.create_line(0, 2*cell_size/3, cell_size, 2*cell_size/3, width=2)
-                        canvas.create_line(cell_size/3, 0, cell_size/3, cell_size, width=2)
-                        canvas.create_line(2*cell_size/3, 0, 2*cell_size/3, cell_size, width=2)
+                        canvas.create_line(0, cell_size/3, cell_size, cell_size/3, width=2, fill="black")
+                        canvas.create_line(0, 2*cell_size/3, cell_size, 2*cell_size/3, width=2, fill="black")
+                        canvas.create_line(cell_size/3, 0, cell_size/3, cell_size, width=2, fill="black")
+                        canvas.create_line(2*cell_size/3, 0, 2*cell_size/3, cell_size, width=2, fill="black")
                     elif cell_type == 1:  #Camino
                         canvas.configure(bg='white')
                     elif cell_type == 2:  #Túnel
@@ -592,13 +593,13 @@ class Gui:
             
             #Mover jugador según tecla
             if event.keysym == "Up":
-                jugador.mover("up", len(mapa), len(mapa[0]))
+                jugador.mover("up", mapa ,len(mapa), len(mapa[0]))
             elif event.keysym == "Down":
-                jugador.mover("down", len(mapa), len(mapa[0]))
+                jugador.mover("down", mapa ,len(mapa), len(mapa[0]))
             elif event.keysym == "Left":
-                jugador.mover("left", len(mapa), len(mapa[0]))
+                jugador.mover("left", mapa, len(mapa), len(mapa[0]))
             elif event.keysym == "Right":
-                jugador.mover("right", len(mapa), len(mapa[0]))
+                jugador.mover("right", mapa, len(mapa), len(mapa[0]))
             else:
                 return  #No es una tecla de movimiento
             

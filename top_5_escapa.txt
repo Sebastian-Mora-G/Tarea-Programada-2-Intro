@@ -1,1 +1,1 @@
-[['Goku', 945], ['Sofia', 904], ['Vegeta', 899], ['Jorge', 466], ['Periquito', 454], ['Emma', 451], ['Periquito', 0], ['Sebas', 0]]
+[['Goku', 945], ['Sofia', 904], ['Vegeta', 899], ['Jorge', 466], ['Periquito', 454], ['Emma', 451], ['Cuchurrumín', 329], ['Periquito', 0], ['Sebas', 0], ['Mozart', 0], ['Mozart', 0], ['Mozart', 0], ['Mozart', 0], ['Mozart', 0], ['Mozart', 0], ['Mozart', 0], ['Mozart', 0], ['Mozart', 0], ['dd', 0], ['Robert Robentson the Third', 0], ['Robert Robentson the Third', 0], ['Mozart', -2000]]
