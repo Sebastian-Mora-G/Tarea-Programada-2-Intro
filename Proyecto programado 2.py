@@ -377,7 +377,7 @@ class Gui:
                     elif cell_type == 3:  #Lianas
                         canvas.configure(bg='green')
             
-            dibujar_jugador()
+            dibujar_jugador()   
             dibujar_enemigos()
         
         #E:Ninguna

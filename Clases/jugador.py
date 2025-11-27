@@ -6,29 +6,39 @@ class Jugador:
         self.fila = fila
         self.columna = columna
         self.simbolo = "★"
-        self.color = "yellow"
+        self.color = "blue"
     
     def mover(self, direccion, mapa, filas_max, columnas_max):
+        fila_siguiente = 0
+        columna_siguiente = 0
         """Mueve al jugador en la dirección especificada, validando límites del mapa"""
         if direccion == "up":
-            if not Jugador.verificar_terreno(mapa[0][self.fila-1] ,self.modo):
+            fila_siguiente = max(0, self.fila - 1)
+            columna_siguiente = self.columna
+            if not Jugador.verificar_terreno(mapa[fila_siguiente][columna_siguiente] ,self.modo):
                 return
-            self.fila = max(0, self.fila - 1)
+            self.fila = fila_siguiente
             
         elif direccion == "down":
-            if not Jugador.verificar_terreno(mapa[filas_max - 1][self.fila + 1] ,self.modo):
+            fila_siguiente = min(filas_max - 1, self.fila + 1)
+            columna_siguiente = self.columna
+            if not Jugador.verificar_terreno(mapa[fila_siguiente][columna_siguiente] ,self.modo):
                 return
-            self.fila = min(filas_max - 1, self.fila + 1)
+            self.fila = fila_siguiente 
             
         elif direccion == "left":
-            if not Jugador.verificar_terreno(mapa[0][self.columna - 1] ,self.modo):
+            fila_siguiente = self.fila
+            columna_siguiente = max(0, self.columna - 1)
+            if not Jugador.verificar_terreno(mapa[fila_siguiente][columna_siguiente] ,self.modo):
                 return
-            self.columna = max(0, self.columna - 1)
+            self.columna = columna_siguiente
             
         elif direccion == "right":
-            if not Jugador.verificar_terreno(mapa[columnas_max - 1][self.columna + 1] ,self.modo):
+            fila_siguiente = self.fila
+            columna_siguiente = min(columnas_max - 1, self.columna + 1)
+            if not Jugador.verificar_terreno(mapa[fila_siguiente][columna_siguiente] ,self.modo):
                 return
-            self.columna = min(columnas_max - 1, self.columna + 1)
+            self.columna = columna_siguiente
 
     def verificar_terreno(terreno, modo):
         """
