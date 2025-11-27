@@ -288,7 +288,7 @@ class Gui:
             #Texto de energia
             texto_estado = "CORRIENDO" if energia.corriendo else "CAMINANDO"
             canvas_energia.create_text(75, 35, text=f"Energía: {int(porcentaje)}% - {texto_estado}", 
-                                     font=("Arial", 8), tags="texto")
+                                    font=("Arial", 8), tags="texto")
         
         #Botones de control
         boton_modo = tk.Button(opciones_frame, text=f"Modo: {modo_actual.capitalize()}", 
@@ -338,6 +338,7 @@ class Gui:
         canvas_energia = tk.Canvas(energia_frame, width=150, height=40, bg="lightgray", highlightthickness=0)
         canvas_energia.pack(pady=5)
         
+        tk.Button(energia_frame, text="Salir", command=lambda:finalizar_juego("Se presionó el botón para salir. ")).pack()
         #Inicializar barra de energia
         actualizar_barra_energia()
         
@@ -500,7 +501,13 @@ class Gui:
                         finalizar_juego("¡Te atraparon!\nNo obtienes puntaje por ser atrapado.")
                         return
                     else:
-                        #En modo cazador, reubicar enemigo
+                        #En modo cazador, reubicar enemigo y dar ptos a jugador
+                        if modo_actual == "facil":
+                            jugador.puntaje += 200
+                        elif modo_actual == "intermedio":
+                            jugador.puntaje += 600
+                        else:
+                            jugador.puntaje += 1000
                         while True:
                             fila = random.randint(0, len(mapa)-1)
                             columna = random.randint(0, len(mapa[0])-1)
@@ -513,7 +520,13 @@ class Gui:
             if modo_actual == "cazador":
                 for enemigo in enemigos:
                     if enemigo.fila == len(mapa)-1 and enemigo.columna == len(mapa[0])-1:
-                        #Reubicar enemigo en posición aleatoria
+                        #Reubicar enemigo en posición aleatoria y quitar ptos a jugador
+                        if modo_actual == "facil":
+                            jugador.puntaje -= 100
+                        elif modo_actual == "intermedio":
+                            jugador.puntaje -= 300
+                        else:
+                            jugador.puntaje -= 500
                         while True:
                             fila = random.randint(0, len(mapa)-1)
                             columna = random.randint(0, len(mapa[0])-1)
