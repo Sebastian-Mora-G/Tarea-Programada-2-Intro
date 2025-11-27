@@ -10,6 +10,7 @@ import Clases.tuneles as tuneles
 import Clases.muros as muros
 import Clases.jugador as jugador_clase
 import Clases.enemigo as enemigo_clase
+import Clases.energia as energia_clase
 import random
 import os
 
@@ -22,6 +23,7 @@ puntaje_actual = 0
 enemigos = []
 tiempo_inicio = 0
 juego_activo = True
+ultimo_tiempo_movimiento = 0
 
 top_jugadores_escapa = []
 top_jugadores_caza = []
@@ -225,7 +227,7 @@ class Gui:
     #R:Debe existir nombre_jugador registrado
     #Funcionalidad:Interfaz principal del juego con mapa, controles y lógica de juego
     def mostrar_mapa():
-        global enemigos, modo_actual ,tiempo_inicio, puntaje_actual, juego_activo, top_jugadores_escapa, top_jugadores_caza, dificultad_actual, nombre_jugador
+        global enemigos, modo_actual ,tiempo_inicio, puntaje_actual, juego_activo, top_jugadores_escapa, top_jugadores_caza, dificultad_actual, nombre_jugador, ultimo_tiempo_movimiento
         
         mapa_ventana = tk.Tk()
         mapa_ventana.title("Mapa del Juego")
@@ -247,9 +249,11 @@ class Gui:
         #Generar mapa y crear jugador
         mapa = Gui.generar_mapa_aleatorio()
         jugador = jugador_clase.Jugador(nombre_jugador,0, 0)
+        energia = energia_clase.Energia(dificultad_actual)
         
         enemigos = Gui.crear_enemigos(mapa, jugador, modo_actual)
         tiempo_inicio = time.time()
+        ultimo_tiempo_movimiento = time.time() * 1000  #ms
         cell_size = 35
         juego_activo = True
         
@@ -270,7 +274,31 @@ class Gui:
         def reiniciar_enemigos():
             global enemigos
             enemigos = Gui.crear_enemigos(mapa, jugador, modo_actual)
+            #Actualizar dificultad en energia
+            energia.actualizar_dificultad(dificultad_actual)
             dibujar_enemigos()
+        
+        #E:Ninguna
+        #S:Actualiza barra de energia visual
+        #R:Ninguna
+        #Funcionalidad:Dibujar barra de energia con porcentaje actual
+        def actualizar_barra_energia():
+            porcentaje = energia.obtener_porcentaje()
+            canvas_energia.delete("barra")
+            canvas_energia.delete("texto")
+            
+            #Dibujar fondo de barra
+            canvas_energia.create_rectangle(5, 5, 145, 25, fill="lightgray", outline="black", width=1)
+            
+            #Dibujar barra de energia
+            ancho_barra = int(140 * (porcentaje / 100))
+            color = "green" if porcentaje > 50 else "yellow" if porcentaje > 20 else "red"
+            canvas_energia.create_rectangle(5, 5, 5 + ancho_barra, 25, fill=color, outline="", tags="barra")
+            
+            #Texto de energia
+            texto_estado = "CORRIENDO" if energia.corriendo else "CAMINANDO"
+            canvas_energia.create_text(75, 35, text=f"Energía: {int(porcentaje)}% - {texto_estado}", 
+                                     font=("Arial", 8), tags="texto")
         
         #Botones de control
         boton_modo = tk.Button(opciones_frame, text=f"Modo: {modo_actual.capitalize()}", 
@@ -309,6 +337,19 @@ class Gui:
         label_tiempo = tk.Label(opciones_frame, text="Tiempo: 0s", 
                             bg="lightgray", font=("Arial", 10))
         label_tiempo.pack(pady=10)
+        
+        #Frame para energia
+        energia_frame = tk.Frame(opciones_frame, bg="lightgray")
+        energia_frame.pack(pady=10)
+        
+        label_energia = tk.Label(energia_frame, text="Energía:", bg="lightgray")
+        label_energia.pack()
+        
+        canvas_energia = tk.Canvas(energia_frame, width=150, height=40, bg="lightgray", highlightthickness=0)
+        canvas_energia.pack(pady=5)
+        
+        #Inicializar barra de energia
+        actualizar_barra_energia()
         
         #E:Ninguna
         #S:Dibuja el mapa en la interfaz gráfica
@@ -363,8 +404,9 @@ class Gui:
             
             #Dibujar en nueva posición
             canvas_jugador = celdas_canvas[jugador.fila][jugador.columna]
+            color_jugador = "orange" if energia.corriendo else jugador.color
             canvas_jugador.create_text(cell_size/2, cell_size/2, text=jugador.simbolo, 
-                                    fill=jugador.color, font=("Arial", 12, "bold"))
+                                    fill=color_jugador, font=("Arial", 12, "bold"))
         
         #E:Ninguna
         #S:Dibuja todos los enemigos en el mapa
@@ -395,6 +437,23 @@ class Gui:
                 tiempo_transcurrido = int(time.time() - tiempo_inicio)
                 label_tiempo.config(text=f"Tiempo: {tiempo_transcurrido}s")
                 mapa_ventana.after(1000, actualizar_tiempo)
+        
+        #E:Ninguna
+        #S:Actualiza sistema de energia periodicamente
+        #R:Ninguna
+        #Funcionalidad:Actualizar consumo de energia y barra visual
+        def actualizar_energia():
+            if juego_activo:
+                tiempo_actual = time.time()
+                delta_tiempo = tiempo_actual - getattr(actualizar_energia, 'ultimo_tiempo', tiempo_actual)
+                setattr(actualizar_energia, 'ultimo_tiempo', tiempo_actual)
+                
+                energia.actualizar(delta_tiempo)
+                actualizar_barra_energia()
+                mapa_ventana.after(100, actualizar_energia)
+        
+        #Inicializar tiempo de energia
+        setattr(actualizar_energia, 'ultimo_tiempo', time.time())
         
         #E:mensaje(string)-mensaje a mostrar al usuario
         #S:Finaliza el juego y cierra la ventana
@@ -501,6 +560,10 @@ class Gui:
                     #En modo escapa, enemigos persiguen/huyen según comportamiento normal
                     enemigo.mover(jugador.fila, jugador.columna, modo_actual, len(mapa), len(mapa[0]), enemigos)
             
+            #Recargar energia cuando los enemigos se mueven
+            energia.recargar()
+            actualizar_barra_energia()
+            
             dibujar_enemigos()
             verificar_estado_juego()
             
@@ -516,7 +579,20 @@ class Gui:
         def tecla_presionada(event):
             if not juego_activo:
                 return
-                
+            
+            #Manejar tecla Shift para correr
+            if event.keysym in ["Shift_L", "Shift_R"]:
+                if energia.toggle_correr():
+                    actualizar_barra_energia()
+                    dibujar_jugador()
+                return
+            
+            #Verificar si puede moverse (cooldown)
+            tiempo_actual_ms = time.time() * 1000
+            if not energia.puede_moverse(tiempo_actual_ms):
+                return
+            
+            #Mover jugador según tecla
             if event.keysym == "Up":
                 jugador.mover("up", len(mapa), len(mapa[0]))
             elif event.keysym == "Down":
@@ -525,6 +601,11 @@ class Gui:
                 jugador.mover("left", len(mapa), len(mapa[0]))
             elif event.keysym == "Right":
                 jugador.mover("right", len(mapa), len(mapa[0]))
+            else:
+                return  #No es una tecla de movimiento
+            
+            #Actualizar cooldown
+            energia.set_proximo_movimiento(tiempo_actual_ms)
             
             dibujar_jugador()
             verificar_estado_juego()
@@ -539,8 +620,13 @@ class Gui:
         #Iniciar actualización de tiempo
         actualizar_tiempo()
         
+        #Iniciar actualización de energia
+        actualizar_energia()
+        
         #Configurar bindings de teclado
         mapa_ventana.bind("<KeyPress>", tecla_presionada)
+        mapa_ventana.bind("<Shift_L>", tecla_presionada)
+        mapa_ventana.bind("<Shift_R>", tecla_presionada)
         mapa_ventana.focus_set()
         
         mapa_ventana.mainloop()
