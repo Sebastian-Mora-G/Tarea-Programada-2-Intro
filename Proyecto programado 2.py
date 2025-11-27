@@ -30,70 +30,60 @@ top_jugadores_caza = []
 
 #COMMONS(Archivos)-----------------------------------------------------------------
 class Archivo:
-    #E:Ninguna
-    #S:Guarda los tops en archivos de texto
-    #R:Ninguna
-    #Funcionalidad:Guardar las listas de top jugadores en archivos
     def salvar_tabla_puntajes(): 
+        """
+        Salva en 2 archivos distintos para el top 5 de Escapa y el top 5 de caza. \n
+        No hay que preocuparse por formato. Lo único, que a la lista de top_jugadores_escapa/caza
+        se añadan los elementos así: ["nombre_jugador", puntaje(int)]
+        """
         global top_jugadores_escapa, top_jugadores_caza
-        
-        try:
-            file = open("top_5_escapa.txt", "w", encoding='utf-8')
-            file.write(str(top_jugadores_escapa))
-            file.close()
-        except Exception as e:
-            print(f"Error guardando top escapa: {e}")
-        
-        try:
-            file = open("top_5_caza.txt", "w", encoding='utf-8')
-            file.write(str(top_jugadores_caza))
-            file.close()
-        except Exception as e:
-            print(f"Error guardando top caza: {e}")
-    
-    #E:Ninguna
-    #S:Actualiza top_jugadores_escapa global
-    #R:Ninguna
-    #Funcionalidad:Leer archivo de top escapa y cargar datos
+        top_5_escapa = Archivo.buscar_top_5(top_jugadores_escapa)
+        top_5_caza = Archivo.buscar_top_5(top_jugadores_caza)
+
+        top_5_escapa = str(top_5_escapa)
+        top_5_caza = str(top_5_caza)
+
+        with open("top_5_escapa.txt","w") as file:
+            file.write(top_5_escapa)
+        with open("top_5_caza.txt","w") as file:
+            file.write(top_5_caza)
+
+
     def leer_top_5_escapa():
+        """
+        Lee el archivo de escapa
+        """
         global top_jugadores_escapa
         try: 
-            with open("top_5_escapa.txt","r", encoding='utf-8') as file:
-                contenido = file.read().strip()
-                if contenido:
-                    top_jugadores_escapa = eval(contenido)
-                else:
-                    top_jugadores_escapa = []
+            with open("top_5_escapa.txt","r") as file:
+                top_jugadores_escapa = eval(file.read())
         except:
             top_jugadores_escapa = []
-    
-    #E:Ninguna
-    #S:Actualiza top_jugadores_caza global
-    #R:Ninguna
-    #Funcionalidad:Leer archivo de top caza y cargar datos
+
     def leer_top_5_caza():
+        """
+        Lee el archivo de Caza
+        """
         global top_jugadores_caza
         try: 
-            with open("top_5_caza.txt","r", encoding='utf-8') as file:
-                contenido = file.read().strip()
-                if contenido:
-                    top_jugadores_caza = eval(contenido)
-                else:
-                    top_jugadores_caza = []
+            with open("top_5_caza.txt","r") as file:
+                top_jugadores_caza = eval(file.read())
         except:
             top_jugadores_caza = []
-    
-    #E:lista(list)-lista de jugadores con puntajes
-    #S:lista ordenada con máximo 5 elementos
-    #R:lista debe contener elementos con formato [nombre, puntaje]
-    #Funcionalidad:Obtener top 5 de lista ordenada por puntaje descendente
-    def buscar_top_5(lista:list):
-        if not lista:
-            return []
+
+    def buscar_top_5(lista:list): #van de Mayor a Menor
+        """
+        Busca el top 5 de la lista dada. \n
+        Usado a la hora de mostrar visualmente
+        """
+        top_5 = []
         lista.sort(key=lambda x: x[1], reverse=True)
-        return lista[:5]
-    
-    
+        if len(lista) < 5:
+            return lista
+        #top_5.append(lista[0]);top_5.append(lista[1]);top_5.append(lista[2]);top_5.append(lista[3]);top_5.append(lista[4])
+        return lista
+
+
 #Que lea los archivos:
 Archivo.leer_top_5_escapa()
 Archivo.leer_top_5_caza()
@@ -464,19 +454,14 @@ class Gui:
             
             juego_activo = False
             
-            #PRIMERO LEER los tops actuales
-            Archivo.leer_top_5_escapa()
-            Archivo.leer_top_5_caza()
             
             #AGREGAR PUNTAJE
             nuevo_jugador = [jugador.nombre_usuario, jugador.puntaje]
             
             if modo_actual == "escapa":
                 top_jugadores_escapa.append(nuevo_jugador)
-                top_jugadores_escapa = Archivo.buscar_top_5(top_jugadores_escapa)
             else:
                 top_jugadores_caza.append(nuevo_jugador)
-                top_jugadores_caza = Archivo.buscar_top_5(top_jugadores_caza)
     
             #GUARDAR
             Archivo.salvar_tabla_puntajes()
@@ -637,12 +622,13 @@ class Modficacion:
     #R:Ninguna
     #Funcionalidad:Mostrar ranking de mejores jugadores en modo escapa
     def mostrar_top_5_escapa():
-        Archivo.leer_top_5_escapa()
         global top_jugadores_escapa
         
         mensaje = "TOP 5 - MODO ESCAPA\n\n"
         if top_jugadores_escapa:
             for i, jugador in enumerate(top_jugadores_escapa, 1):
+                if i == 6:
+                    break
                 mensaje += f"{i}. {jugador[0]} - Puntuación: {jugador[1]}\n"
         else:
             mensaje += "No hay jugadores en este top aún"
@@ -654,7 +640,6 @@ class Modficacion:
     #R:Ninguna
     #Funcionalidad:Mostrar ranking de mejores jugadores en modo cazador
     def mostrar_top_5_caza():
-        Archivo.leer_top_5_caza()
         global top_jugadores_caza
         
         mensaje = "TOP 5 - MODO CAZADOR\n\n"

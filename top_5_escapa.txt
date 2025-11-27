@@ -1,1 +1,1 @@
-[['Goku', 945], ['Sofia', 904], ['Jorge', 466], ['Emma', 451], ['Cristina', 447]]
+[['Goku', 945], ['Sofia', 904], ['Vegeta', 899], ['Jorge', 466], ['Periquito', 454], ['Emma', 451], ['Periquito', 0]]
