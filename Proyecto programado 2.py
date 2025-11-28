@@ -151,7 +151,7 @@ class Gui:
     #R:filas y columnas deben ser enteros positivos
     #Funcionalidad:Generar mapa aleatorio con camino garantizado desde inicio hasta meta
     def generar_mapa_aleatorio(filas=15, columnas=15):
-        #0: Muro, 1: Camino, 2: Túnel, 3: Lianas
+        #0:Muro, 1:Camino, 2:Túnel, 3:Lianas
         mapa = [[0 for _ in range(columnas)] for _ in range(filas)]
         
         #Crear camino básico desde inicio hasta fin
@@ -165,18 +165,18 @@ class Gui:
                 y += 1
             mapa[x][y] = 1
         
-        #Rellenar resto del mapa aleatoriamente
+        #Rellenar resto del mapa aleatoriamente 
         for i in range(filas):
             for j in range(columnas):
                 if mapa[i][j] == 0:
                     rand_val = random.random() 
-                    if rand_val < 0.4:
+                    if rand_val < 0.15:  
                         mapa[i][j] = 0 #Muro
-                    elif rand_val >= 0.4 and rand_val <= 0.6:
+                    elif rand_val < 0.60:  
                         mapa[i][j] = 1 #Camino
-                    elif rand_val < 0.8:
+                    elif rand_val < 0.70:  
                         mapa[i][j] = 2 #Tunel
-                    else:
+                    else:  
                         mapa[i][j] = 3 #Lianas
         
         return mapa
@@ -694,9 +694,9 @@ class Modficacion:
     #S:Retorna cantidad de enemigos según dificultad
     #R:Ninguna
     #Funcionalidad:Determinar número de enemigos basado en dificultad actual
-    def obtener_cantidad_enemigos(): #TODO: devolver a como estaba :D
+    def obtener_cantidad_enemigos(): 
         if dificultad_actual == "facil":
-            return 1 #Devolver a 5
+            return 5
         elif dificultad_actual == "intermedio":
             return 7
         else: #dificil

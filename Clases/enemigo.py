@@ -1,216 +1,186 @@
+import random
+import heapq
+
 class Enemigo:
     def __init__(self, fila, columna):
         self.fila = fila
         self.columna = columna
         self.carita = "👹"
         self.color = "red"
-        self.caminos_bloqueados = [] #Ptos x,y dnd solo tiene una salida posible
+        self.ultima_posicion = (fila, columna)
+        self.contador_ciclos = 0
+        self.camino_actual = []
+        self.objetivo_actual = None
     
-    #Funcionalidad: Decidir movimiento del enemigo según modo de juego
-    def mover(self,mapa ,jugador_fila, jugador_columna, modo, filas_mapa, columnas_mapa, otros_enemigos=None):
-        if modo == "escapa":
-            #Perseguir al jugador
-            nueva_fila, nueva_columna = self._perseguir(mapa, jugador_fila, jugador_columna, filas_mapa, columnas_mapa)
-        else:
-            #Huir del jugador
-            nueva_fila, nueva_columna = self._huir(mapa, jugador_fila, jugador_columna, filas_mapa, columnas_mapa)
+    #E:mapa,jugador_fila,jugador_columna,modo,filas_mapa,columnas_mapa,otros_enemigos
+    #S:nueva posición del enemigo
+    #R:Ninguna
+    #Funcionalidad:Mover enemigo usando búsqueda de caminos
+    def mover(self, mapa, jugador_fila, jugador_columna, modo, filas_mapa, columnas_mapa, otros_enemigos=None):
+        objetivo_fila, objetivo_columna = jugador_fila, jugador_columna
         
-        #Verificar si la nueva posición está ocupada por otro enemigo
-        if otros_enemigos:
-            posicion_ocupada = False
-            for enemigo in otros_enemigos:
-                if enemigo != self and enemigo.fila == nueva_fila and enemigo.columna == nueva_columna:
-                    posicion_ocupada = True
-                    break
+        if modo == "cazador":
+            #En modo cazador, el objetivo es la meta (esquina inferior derecha)
+            objetivo_fila, objetivo_columna = filas_mapa-1, columnas_mapa-1
+        
+        #Si no tenemos camino o el objetivo cambió, calcular nuevo camino
+        if (not self.camino_actual or 
+            self.objetivo_actual != (objetivo_fila, objetivo_columna) or
+            len(self.camino_actual) <= 1):
             
-            #Si la posición está ocupada, mantener la posición actual
-            if posicion_ocupada:
-                return self.fila, self.columna
+            self.camino_actual = self._encontrar_camino(mapa, self.fila, self.columna, 
+                                                      objetivo_fila, objetivo_columna, 
+                                                      filas_mapa, columnas_mapa, modo)
+            self.objetivo_actual = (objetivo_fila, objetivo_columna)
         
-        #Actualizar posición si no está ocupada
-        self.fila = nueva_fila
-        self.columna = nueva_columna
+        #Si tenemos un camino, movernos al siguiente paso
+        if len(self.camino_actual) > 1:
+            siguiente_paso = self.camino_actual[1]  #El [0] es la posición actual
+            nueva_fila, nueva_columna = siguiente_paso
+            
+            #Verificar si la posición está ocupada
+            if not self._posicion_ocupada(nueva_fila, nueva_columna, otros_enemigos or []):
+                self.fila, self.columna = nueva_fila, nueva_columna
+                self.camino_actual.pop(0)  #Quitar el paso que acabamos de tomar
+            else:
+                #Si está ocupada, recalcular camino
+                self.camino_actual = []
+        else:
+            #Si no hay camino válido, movimiento aleatorio
+            self.camino_actual = []
+            nueva_fila, nueva_columna = self._movimiento_aleatorio_valido(mapa, filas_mapa, columnas_mapa, modo)
+            self.fila, self.columna = nueva_fila, nueva_columna
+        
         return self.fila, self.columna
     
-    #Funcionalidad: Movimiento dirigido hacia la meta en modo cazador
+    #E:mapa,fila_inicio,columna_inicio,fila_objetivo,columna_objetivo,filas_mapa,columnas_mapa,modo
+    #S:lista de posiciones que forman el camino
+    #R:Ninguna
+    #Funcionalidad:Encontrar camino usando algoritmo A*
+    def _encontrar_camino(self, mapa, fila_inicio, columna_inicio, fila_objetivo, columna_objetivo, filas_mapa, columnas_mapa, modo):
+        #Usar A* para encontrar el camino más corto
+        open_set = []
+        heapq.heappush(open_set, (0, fila_inicio, columna_inicio))
+        
+        came_from = {}
+        g_score = {(fila_inicio, columna_inicio): 0}
+        f_score = {(fila_inicio, columna_inicio): self._heuristic(fila_inicio, columna_inicio, fila_objetivo, columna_objetivo)}
+        
+        while open_set:
+            _, actual_fila, actual_columna = heapq.heappop(open_set)
+            
+            #Si llegamos al objetivo, reconstruir camino
+            if actual_fila == fila_objetivo and actual_columna == columna_objetivo:
+                return self._reconstruir_camino(came_from, (actual_fila, actual_columna))
+            
+            #Explorar vecinos
+            for vecino in self._obtener_vecinos_validos(mapa, actual_fila, actual_columna, filas_mapa, columnas_mapa, modo):
+                vecino_fila, vecino_columna = vecino
+                
+                tentative_g_score = g_score[(actual_fila, actual_columna)] + 1
+                
+                if vecino not in g_score or tentative_g_score < g_score[vecino]:
+                    came_from[vecino] = (actual_fila, actual_columna)
+                    g_score[vecino] = tentative_g_score
+                    f_score[vecino] = tentative_g_score + self._heuristic(vecino_fila, vecino_columna, fila_objetivo, columna_objetivo)
+                    heapq.heappush(open_set, (f_score[vecino], vecino_fila, vecino_columna))
+        
+        #Si no se encuentra camino, devolver lista vacía
+        return []
+    
+    #E:fila_actual,columna_actual,fila_objetivo,columna_objetivo
+    #S:valor heurístico (distancia Manhattan)
+    #R:Ninguna
+    #Funcionalidad:Calcular heurística para A*
+    def _heuristic(self, fila_actual, columna_actual, fila_objetivo, columna_objetivo):
+        return abs(fila_actual - fila_objetivo) + abs(columna_actual - columna_objetivo)
+    
+    #E:mapa,fila_actual,columna_actual,filas_mapa,columnas_mapa,modo
+    #S:lista de vecinos válidos
+    #R:Ninguna
+    #Funcionalidad:Obtener vecinos a los que se puede mover
+    def _obtener_vecinos_validos(self, mapa, fila_actual, columna_actual, filas_mapa, columnas_mapa, modo):
+        vecinos = []
+        direcciones = [(0,1),(1,0),(0,-1),(-1,0)]  #Derecha,Abajo,Izquierda,Arriba
+        
+        for dx, dy in direcciones:
+            nueva_fila = fila_actual + dx
+            nueva_columna = columna_actual + dy
+            
+            if (0 <= nueva_fila < filas_mapa and 0 <= nueva_columna < columnas_mapa):
+                terreno = mapa[nueva_fila][nueva_columna]
+                
+                #Verificar según el modo
+                if modo == "escapa":
+                    if self.verificar_terreno_perseguir(terreno):
+                        vecinos.append((nueva_fila, nueva_columna))
+                else:  #modo cazador
+                    if self.verificar_terreno_perseguir(terreno):
+                        vecinos.append((nueva_fila, nueva_columna))
+        
+        return vecinos
+    
+    #E:came_from,posicion_actual
+    #S:camino reconstruido
+    #R:Ninguna
+    #Funcionalidad:Reconstruir camino desde el objetivo al inicio
+    def _reconstruir_camino(self, came_from, actual):
+        camino_total = [actual]
+        while actual in came_from:
+            actual = came_from[actual]
+            camino_total.append(actual)
+        camino_total.reverse()
+        return camino_total
+    
+    #E:nueva_fila,nueva_columna,otros_enemigos
+    #S:booleano indicando si posición está ocupada
+    #R:Ninguna
+    #Funcionalidad:Verificar si posición está ocupada por otro enemigo
+    def _posicion_ocupada(self, nueva_fila, nueva_columna, otros_enemigos):
+        for enemigo in otros_enemigos:
+            if enemigo != self and enemigo.fila == nueva_fila and enemigo.columna == nueva_columna:
+                return True
+        return False
+    
+    #E:mapa,filas_mapa,columnas_mapa,modo
+    #S:nueva posición válida aleatoria
+    #R:Ninguna
+    #Funcionalidad:Movimiento aleatorio cuando no hay camino
+    def _movimiento_aleatorio_valido(self, mapa, filas_mapa, columnas_mapa, modo):
+        direcciones = [(0,1),(1,0),(0,-1),(-1,0)]
+        random.shuffle(direcciones)
+        
+        for dx, dy in direcciones:
+            nf = self.fila + dx
+            nc = self.columna + dy
+            if (0 <= nf < filas_mapa and 0 <= nc < columnas_mapa):
+                terreno = mapa[nf][nc]
+                if modo == "escapa" and self.verificar_terreno_perseguir(terreno):
+                    return nf, nc
+                elif modo == "cazador" and self.verificar_terreno_perseguir(terreno):
+                    return nf, nc
+        
+        return self.fila, self.columna
+    
+    #Funcionalidad para modo cazador (mantener compatibilidad)
     def mover_hacia_meta(self, mapa, jugador_fila, jugador_columna, meta_fila, meta_columna, filas_mapa, columnas_mapa, otros_enemigos=None):
-        nueva_fila = self.fila
-        nueva_columna = self.columna
-        resultado = False
-        nuevo_valor = 0
-        
-        #Decidir dirección prioritaria
-        resultado, nuevo_valor = self.perseguir_vertical(mapa, jugador_fila, filas_mapa, True)
-        if resultado:
-            nueva_fila = nuevo_valor
-        else: 
-            resultado, nuevo_valor = self.perseguir_horizontal(mapa, jugador_columna, columnas_mapa, True)
-            if resultado:
-                nueva_columna = nuevo_valor
-            else:
-                resultado, nuevo_valor = self.perseguir_vertical(mapa, jugador_fila, filas_mapa, False)
-                if resultado:
-                    nueva_fila = nuevo_valor
-                else:
-                    resultado, nuevo_valor = self.perseguir_horizontal(mapa, jugador_columna, columnas_mapa, False)
-                    if resultado:
-                        nueva_columna = nuevo_valor
-                    self.caminos_bloqueados.append((self.fila, self.columna))
-        
+        #Usar el mismo sistema de caminos pero con la meta como objetivo
+        return self.mover(mapa, jugador_fila, jugador_columna, "cazador", filas_mapa, columnas_mapa, otros_enemigos)
     
-        #Verificar si la nueva posición está ocupada por otro enemigo
-        if otros_enemigos:
-            posicion_ocupada = False
-            for enemigo in otros_enemigos:
-                if enemigo != self and enemigo.fila == nueva_fila and enemigo.columna == nueva_columna:
-                    posicion_ocupada = True
-                    break
-            
-            #Si la posición está ocupada, mantener la posición actual
-            if posicion_ocupada:
-                return self.fila, self.columna
-        
-        #Actualizar posición si no está ocupada
-        self.fila = nueva_fila
-        self.columna = nueva_columna
-        return self.fila, self.columna
-    
-    #Funcionalidad: Movimiento de persecución hacia el jugador
-    def _perseguir(self,mapa, jugador_fila, jugador_columna, filas_mapa, columnas_mapa):
-        #Moverse hacia el jugador (algoritmo simple)
-        nueva_fila = self.fila
-        nueva_columna = self.columna
-        resultado = False
-        nuevo_valor = 0
-        
-        #Decidir dirección prioritaria
-        resultado, nuevo_valor = self.perseguir_vertical(mapa, jugador_fila, filas_mapa, False)
-        if resultado:
-            nueva_fila = nuevo_valor
-        else: 
-            resultado, nuevo_valor = self.perseguir_horizontal(mapa, jugador_columna, columnas_mapa, False)
-            if resultado:
-                nueva_columna = nuevo_valor
-            else:
-                resultado, nuevo_valor = self.perseguir_vertical(mapa, jugador_fila, filas_mapa, True)
-                if resultado:
-                    nueva_fila = nuevo_valor
-                else:
-                    resultado, nuevo_valor = self.perseguir_horizontal(mapa, jugador_columna, columnas_mapa, True)
-                    if resultado:
-                        nueva_columna = nuevo_valor
-        
-        return nueva_fila, nueva_columna
-
-    def perseguir_vertical(self, mapa, jugador_fila,filas_mapa, noprioritario):
-        suma = True
-        nueva_fila = self.fila
-        #Moverse verticalmente
-        if jugador_fila < self.fila and self.fila > 0:
-            suma = False
-        elif jugador_fila > self.fila and self.fila < filas_mapa - 1:
-            suma = True
-        
-        if noprioritario:
-            suma = not suma 
-        
-        if suma:
-            nueva_fila += 1
-        else:
-            nueva_fila -= 1   
-        try:
-            posicion = mapa[nueva_fila][self.columna]
-            if (nueva_fila, self.columna) in self.caminos_bloqueados:
-                return False, nueva_fila
-            res = self.verificar_terreno_perseguir(posicion) 
-            return res , nueva_fila
-        except IndexError:
-            return False, nueva_fila
-    
-    def perseguir_horizontal(self, mapa,  jugador_columna ,columnas_mapa, noprioritario):
-        suma = True
-        nueva_columna = self.columna
-        #Moverse horizontalmente
-        if jugador_columna < self.columna and self.columna > 0:
-            suma = False
-        elif jugador_columna > self.columna and self.columna < columnas_mapa - 1:
-            suma = True
-        if noprioritario:
-            suma = not suma 
-        
-        if suma:
-            nueva_columna += 1
-        else:
-            nueva_columna -= 1  
-        try:
-            posi = mapa[self.fila][nueva_columna]
-            if (self.fila, nueva_columna) in self.caminos_bloqueados:
-                return False, nueva_columna
-            res = self.verificar_terreno_perseguir(posi)
-            return res, nueva_columna
-        except IndexError:
-            return False, nueva_columna
-    
-    #Funcionalidad: Movimiento de huida del jugador
-    def _huir(self, mapa, jugador_fila, jugador_columna, filas_mapa, columnas_mapa):
-        nueva_fila = self.fila
-        nueva_columna = self.columna
-        resultado = False
-        nuevo_valor = 0
-        
-        #Decidir dirección prioritaria
-        resultado, nuevo_valor = self.perseguir_vertical(mapa, jugador_fila, filas_mapa, True)
-        if resultado:
-            nueva_fila = nuevo_valor
-        else: 
-            resultado, nuevo_valor = self.perseguir_horizontal(mapa, jugador_columna, columnas_mapa, True)
-            if resultado:
-                nueva_columna = nuevo_valor
-            else:
-                resultado, nuevo_valor = self.perseguir_vertical(mapa, jugador_fila, filas_mapa, False)
-                if resultado:
-                    nueva_fila = nuevo_valor
-                else:
-                    resultado, nuevo_valor = self.perseguir_horizontal(mapa, jugador_columna, columnas_mapa, False)
-                    if resultado:
-                        nueva_columna = nuevo_valor
-        
-        return nueva_fila, nueva_columna
-    
+    #E:terreno
+    #S:booleano indicando si puede pasar
+    #R:Ninguna
+    #Funcionalidad:Verificar terreno válido para persecución
     def verificar_terreno_perseguir(self, terreno):
-        """
-        E: terreno dnd se va a mover y el modo en el que se encuentra \n
-        S: bool, dependiendo si puede o no pasar \n
-        R: - \n
-        Verifica el terreno dnd se quiere mover el enemigo y si puede moverse por ahí \n
-        """
-        if terreno == 1 or terreno == 3:
+        if terreno == 1 or terreno == 3:  #Camino o Lianas
             return True
         return False
     
+    #E:terreno
+    #S:booleano indicando si puede pasar
+    #R:Ninguna
+    #Funcionalidad:Verificar terreno válido para huida
     def verificar_terreno_huir(self, terreno):
-        """
-        E: terreno dnd se va a mover y el modo en el que se encuentra \n
-        S: bool, dependiendo si puede o no pasar \n
-        R: - \n
-        Verifica el terreno dnd se quiere mover el enemigo y si puede moverse por ahí \n
-        """
-        if terreno == 1 or terreno == 2:
+        if terreno == 1 or terreno == 2:  #Camino o Túneles
             return True
         return False
-""""
-#Decidir dirección prioritaria
-        if abs(jugador_fila - self.fila) > abs(jugador_columna - self.columna):
-            #Moverse verticalmente
-            if jugador_fila < self.fila and self.fila > 0:
-                nueva_fila -= 1
-            elif jugador_fila > self.fila and self.fila < filas_mapa - 1:
-                nueva_fila += 1
-        else:
-            #Moverse horizontalmente
-            if jugador_columna < self.columna and self.columna > 0:
-                nueva_columna -= 1
-            elif jugador_columna > self.columna and self.columna < columnas_mapa - 1:
-                nueva_columna += 1
-        
-        """
