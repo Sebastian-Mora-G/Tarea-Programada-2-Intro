@@ -152,7 +152,7 @@ class Enemigo:
                 terreno = mapa[nf][nc]
                 if modo == "escapa" and self.verificar_terreno_perseguir(terreno):
                     return nf, nc
-                elif modo == "cazador" and self.verificar_terreno_perseguir(terreno):
+                elif modo == "cazador" and self.verificar_terreno_huir(terreno):
                     return nf, nc
         
         return self.fila, self.columna
