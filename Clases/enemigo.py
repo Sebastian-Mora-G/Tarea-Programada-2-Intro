@@ -11,19 +11,32 @@ class Enemigo:
         self.contador_ciclos = 0
         self.camino_actual = []
         self.objetivo_actual = None
+        self.historial_posiciones = []  #Para detectar ciclos
+        self.contador_atascado = 0
     
     #E:mapa,jugador_fila,jugador_columna,modo,filas_mapa,columnas_mapa,otros_enemigos
     #S:nueva posición del enemigo
     #R:Ninguna
-    #Funcionalidad:Mover enemigo usando búsqueda de caminos
+    #Funcionalidad:Mover enemigo usando búsqueda de caminos inteligente
     def mover(self, mapa, jugador_fila, jugador_columna, modo, filas_mapa, columnas_mapa, otros_enemigos=None):
-        objetivo_fila, objetivo_columna = jugador_fila, jugador_columna
-        
+        #Determinar objetivo según modo
         if modo == "cazador":
-            #En modo cazador, el objetivo es la meta (esquina inferior derecha)
-            objetivo_fila, objetivo_columna = filas_mapa-1, columnas_mapa-1
+            #En modo cazador, elegir entre dos metas forma inteligente
+            objetivo_fila, objetivo_columna = self._elegir_meta_inteligente(filas_mapa, columnas_mapa)
+        else:
+            #En modo escapa, perseguir jugador
+            objetivo_fila, objetivo_columna = jugador_fila, jugador_columna
         
-        #Si no tenemos camino o el objetivo cambió, calcular nuevo camino
+        #Detectar si está atascado en ciclo
+        if self._detectar_ciclo():
+            self.contador_atascado += 1
+            #Si está muy atascado, usar movimiento alternativo
+            if self.contador_atascado > 3:
+                return self._movimiento_emergencia(mapa, objetivo_fila, objetivo_columna, filas_mapa, columnas_mapa, otros_enemigos or [])
+        else:
+            self.contador_atascado = 0
+        
+        #Si no tenemos camino o objetivo cambió, calcular nuevo camino
         if (not self.camino_actual or 
             self.objetivo_actual != (objetivo_fila, objetivo_columna) or
             len(self.camino_actual) <= 1):
@@ -33,28 +46,161 @@ class Enemigo:
                                                       filas_mapa, columnas_mapa, modo)
             self.objetivo_actual = (objetivo_fila, objetivo_columna)
         
-        #Si tenemos un camino, movernos al siguiente paso
+        #Si tenemos camino, movernos al siguiente paso
         if len(self.camino_actual) > 1:
             siguiente_paso = self.camino_actual[1]
             nueva_fila, nueva_columna = siguiente_paso
             
-            #Verificar si la posición está ocupada
+            #Verificar si posición está ocupada
             if not self._posicion_ocupada(nueva_fila, nueva_columna, otros_enemigos or []):
                 self.fila, self.columna = nueva_fila, nueva_columna
                 self.camino_actual.pop(0)
+                self._actualizar_historial()
             else:
                 #Si está ocupada, recalcular camino
                 self.camino_actual = []
         else:
-            #Si no hay camino válido, movimiento aleatorio
+            #Si no hay camino válido, movimiento aleatorio inteligente
             self.camino_actual = []
-            nueva_fila, nueva_columna = self._movimiento_aleatorio_valido(mapa, filas_mapa, columnas_mapa, modo)
-            self.fila, self.columna = nueva_fila, nueva_columna
+            self._movimiento_aleatorio_inteligente(mapa, objetivo_fila, objetivo_columna, filas_mapa, columnas_mapa, otros_enemigos or [])
+            self._actualizar_historial()
         
         return self.fila, self.columna
     
+    #E:filas_mapa,columnas_mapa
+    #S:meta elegida (fila,columna)
+    #R:Ninguna
+    #Funcionalidad:Elegir meta más cercana forma inteligente
+    def _elegir_meta_inteligente(self, filas_mapa, columnas_mapa):
+        meta_izquierda = (filas_mapa-1, 0)
+        meta_derecha = (filas_mapa-1, columnas_mapa-1)
+        
+        #Calcular distancia a cada meta
+        dist_izquierda = abs(self.fila - meta_izquierda[0]) + abs(self.columna - meta_izquierda[1])
+        dist_derecha = abs(self.fila - meta_derecha[0]) + abs(self.columna - meta_derecha[1])
+        
+        #Elegir meta más cercana
+        if dist_izquierda < dist_derecha:
+            return meta_izquierda
+        elif dist_derecha < dist_izquierda:
+            return meta_derecha
+        else:
+            #Si equidistan, elegir aleatoriamente
+            return random.choice([meta_izquierda, meta_derecha])
+    
+    #E:Ninguna
+    #S:booleano indicando si está en ciclo
+    #R:Ninguna
+    #Funcionalidad:Detectar si enemigo está atrapado en ciclo
+    def _detectar_ciclo(self):
+        if len(self.historial_posiciones) < 6:
+            return False
+        
+        #Verificar si hay pocas posiciones únicas en historial reciente
+        ultimas_posiciones = self.historial_posiciones[-6:]
+        posiciones_unicas = len(set(ultimas_posiciones))
+        
+        #Si hay 3 o menos posiciones únicas en 6 movimientos, probable ciclo
+        return posiciones_unicas <= 3
+    
+    #E:Ninguna
+    #S:Actualiza historial de posiciones
+    #R:Ninguna
+    #Funcionalidad:Mantener registro de posiciones recientes
+    def _actualizar_historial(self):
+        self.historial_posiciones.append((self.fila, self.columna))
+        if len(self.historial_posiciones) > 8:
+            self.historial_posiciones.pop(0)
+    
+    #E:mapa,objetivo_fila,objetivo_columna,filas_mapa,columnas_mapa,otros_enemigos
+    #S:Modifica posición del enemigo
+    #R:Ninguna
+    #Funcionalidad:Movimiento emergencia cuando está atascado
+    def _movimiento_emergencia(self, mapa, objetivo_fila, objetivo_columna, filas_mapa, columnas_mapa, otros_enemigos):
+        #Primero intentar movimientos que acerquen al objetivo
+        direcciones = [(0,1),(1,0),(0,-1),(-1,0)]
+        
+        #Ordenar direcciones por proximidad al objetivo
+        direcciones_ordenadas = []
+        for dx, dy in direcciones:
+            nf = self.fila + dx
+            nc = self.columna + dy
+            
+            if (0 <= nf < filas_mapa and 0 <= nc < columnas_mapa and
+                self._es_movimiento_valido(mapa, nf, nc)):
+                
+                distancia = abs(nf - objetivo_fila) + abs(nc - objetivo_columna)
+                direcciones_ordenadas.append((distancia, nf, nc, dx, dy))
+        
+        #Probar direcciones ordenadas por proximidad
+        if direcciones_ordenadas:
+            direcciones_ordenadas.sort(key=lambda x: x[0])
+            for distancia, nf, nc, dx, dy in direcciones_ordenadas:
+                if not self._posicion_ocupada(nf, nc, otros_enemigos):
+                    self.fila, self.columna = nf, nc
+                    self.historial_posiciones = []
+                    self.contador_atascado = 0
+                    return
+        
+        #Si no pudo moverse sin colisiones, forzar movimiento
+        for dx, dy in direcciones:
+            nf = self.fila + dx
+            nc = self.columna + dy
+            
+            if (0 <= nf < filas_mapa and 0 <= nc < columnas_mapa and
+                self._es_movimiento_valido(mapa, nf, nc)):
+                
+                self.fila, self.columna = nf, nc
+                self.historial_posiciones = []
+                self.contador_atascado = 0
+                return
+    
+    #E:mapa,objetivo_fila,objetivo_columna,filas_mapa,columnas_mapa,otros_enemigos
+    #S:Modifica posición del enemigo
+    #R:Ninguna
+    #Funcionalidad:Movimiento aleatorio que prioriza acercarse al objetivo
+    def _movimiento_aleatorio_inteligente(self, mapa, objetivo_fila, objetivo_columna, filas_mapa, columnas_mapa, otros_enemigos):
+        direcciones = [(0,1),(1,0),(0,-1),(-1,0)]
+        
+        #Ordenar direcciones por qué tan cerca quedamos del objetivo
+        direcciones_ordenadas = []
+        for dx, dy in direcciones:
+            nf = self.fila + dx
+            nc = self.columna + dy
+            
+            if (0 <= nf < filas_mapa and 0 <= nc < columnas_mapa and
+                self._es_movimiento_valido(mapa, nf, nc) and
+                not self._posicion_ocupada(nf, nc, otros_enemigos)):
+                
+                distancia = abs(nf - objetivo_fila) + abs(nc - objetivo_columna)
+                direcciones_ordenadas.append((distancia, nf, nc))
+        
+        #Elegir dirección que más acerca al objetivo
+        if direcciones_ordenadas:
+            direcciones_ordenadas.sort(key=lambda x: x[0])
+            self.fila, self.columna = direcciones_ordenadas[0][1], direcciones_ordenadas[0][2]
+        else:
+            #Si no hay movimientos válidos, intentar cualquier movimiento
+            for dx, dy in direcciones:
+                nf = self.fila + dx
+                nc = self.columna + dy
+                if (0 <= nf < filas_mapa and 0 <= nc < columnas_mapa and
+                    self._es_movimiento_valido(mapa, nf, nc)):
+                    self.fila, self.columna = nf, nc
+                    break
+    
+    #E:mapa,fila,columna
+    #S:booleano indicando si movimiento es válido
+    #R:Ninguna
+    #Funcionalidad:Verificar si movimiento es válido
+    def _es_movimiento_valido(self, mapa, fila, columna):
+        if not (0 <= fila < len(mapa) and 0 <= columna < len(mapa[0])):
+            return False
+        terreno = mapa[fila][columna]
+        return terreno == 1 or terreno == 3  #Camino o Lianas
+    
     #E:mapa,fila_inicio,columna_inicio,fila_objetivo,columna_objetivo,filas_mapa,columnas_mapa,modo
-    #S:lista de posiciones que forman el camino
+    #S:lista de posiciones que forman camino
     #R:Ninguna
     #Funcionalidad:Encontrar camino usando algoritmo A*
     def _encontrar_camino(self, mapa, fila_inicio, columna_inicio, fila_objetivo, columna_objetivo, filas_mapa, columnas_mapa, modo):
@@ -104,21 +250,15 @@ class Enemigo:
             nueva_columna = columna_actual + dy
             
             if (0 <= nueva_fila < filas_mapa and 0 <= nueva_columna < columnas_mapa):
-                terreno = mapa[nueva_fila][nueva_columna]
-                
-                if modo == "escapa":
-                    if self.verificar_terreno_perseguir(terreno):
-                        vecinos.append((nueva_fila, nueva_columna))
-                else:
-                    if self.verificar_terreno_perseguir(terreno):
-                        vecinos.append((nueva_fila, nueva_columna))
+                if self._es_movimiento_valido(mapa, nueva_fila, nueva_columna):
+                    vecinos.append((nueva_fila, nueva_columna))
         
         return vecinos
     
     #E:came_from,posicion_actual
     #S:camino reconstruido
     #R:Ninguna
-    #Funcionalidad:Reconstruir camino desde el objetivo al inicio
+    #Funcionalidad:Reconstruir camino desde objetivo al inicio
     def _reconstruir_camino(self, came_from, actual):
         camino_total = [actual]
         while actual in came_from:
@@ -136,26 +276,6 @@ class Enemigo:
             if enemigo != self and enemigo.fila == nueva_fila and enemigo.columna == nueva_columna:
                 return True
         return False
-    
-    #E:mapa,filas_mapa,columnas_mapa,modo
-    #S:nueva posición válida aleatoria
-    #R:Ninguna
-    #Funcionalidad:Movimiento aleatorio cuando no hay camino
-    def _movimiento_aleatorio_valido(self, mapa, filas_mapa, columnas_mapa, modo):
-        direcciones = [(0,1),(1,0),(0,-1),(-1,0)]
-        random.shuffle(direcciones)
-        
-        for dx, dy in direcciones:
-            nf = self.fila + dx
-            nc = self.columna + dy
-            if (0 <= nf < filas_mapa and 0 <= nc < columnas_mapa):
-                terreno = mapa[nf][nc]
-                if modo == "escapa" and self.verificar_terreno_perseguir(terreno):
-                    return nf, nc
-                elif modo == "cazador" and self.verificar_terreno_huir(terreno):
-                    return nf, nc
-        
-        return self.fila, self.columna
     
     #E:terreno
     #S:booleano indicando si puede pasar

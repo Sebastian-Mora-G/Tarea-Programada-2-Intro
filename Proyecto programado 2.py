@@ -164,68 +164,179 @@ class Gui:
     #E:filas(int)-número de filas del mapa, columnas(int)-número de columnas del mapa
     #S:matriz que representa el mapa con diferentes tipos de casillas
     #R:filas y columnas deben ser enteros positivos
-    #Funcionalidad:Generar mapa aleatorio con camino garantizado desde inicio hasta meta
+    #Funcionalidad:Generar mapa aleatorio con caminos garantizados a todas las metas
     def generar_mapa_aleatorio(filas=15, columnas=15):
         #0:Muro, 1:Camino, 2:Túnel, 3:Lianas
         mapa = [[0 for _ in range(columnas)] for _ in range(filas)]
         
-        #Crear camino básico desde inicio hasta fin
-        x, y = 0, 0
-        mapa[x][y] = 1
+        #Definir metas para modo cazador
+        meta_izquierda = (filas-1, 0)
+        meta_derecha = (filas-1, columnas-1)
         
-        while x < filas-1 or y < columnas-1:
-            if random.random() < 0.5 and x < filas-1:
-                x += 1
-            elif y < columnas-1:
-                y += 1
+        #Crear caminos garantizados desde cualquier punto hacia ambas metas
+        puntos_importantes = [(0,0), meta_izquierda, meta_derecha]  #Inicio y metas
+        
+        #Hacer que todas las metas sean caminos
+        mapa[meta_izquierda[0]][meta_izquierda[1]] = 1
+        mapa[meta_derecha[0]][meta_derecha[1]] = 1
+        
+        #Crear caminos principales desde inicio hasta cada meta
+        for meta in [meta_izquierda, meta_derecha]:
+            #Crear camino desde inicio hasta meta
+            x, y = 0, 0
             mapa[x][y] = 1
+            
+            while x < meta[0] or y < meta[1]:
+                #Decidir si moverse hacia abajo o hacia la meta horizontalmente
+                if x < meta[0] and (y == meta[1] or random.random() < 0.6):
+                    x += 1
+                elif y < meta[1]:
+                    y += 1
+                elif x > meta[0]:
+                    x -= 1
+                elif y > meta[1]:
+                    y -= 1
+                mapa[x][y] = 1
         
-        #Rellenar resto del mapa aleatoriamente 
+        #Crear caminos adicionales para conectar áreas del mapa
+        for _ in range(filas + columnas):  
+            inicio_x = random.randint(0, filas-1)
+            inicio_y = random.randint(0, columnas-1)
+            
+            if mapa[inicio_x][inicio_y] == 1:  #Solo empezar desde caminos existentes
+                #Crear pequeño camino aleatorio
+                longitud = random.randint(3, 8)
+                direcciones = [(0,1),(1,0),(0,-1),(-1,0)]
+                
+                x, y = inicio_x, inicio_y
+                for _ in range(longitud):
+                    dx, dy = random.choice(direcciones)
+                    nuevo_x = max(0, min(filas-1, x + dx))
+                    nuevo_y = max(0, min(columnas-1, y + dy))
+                    
+                    #Solo convertir en camino si no es una posición crítica bloqueada
+                    if (nuevo_x, nuevo_y) not in puntos_importantes:
+                        mapa[nuevo_x][nuevo_y] = 1
+                    x, y = nuevo_x, nuevo_y
+        
         for i in range(filas):
             for j in range(columnas):
                 if mapa[i][j] == 0:
                     rand_val = random.random() 
-                    if rand_val < 0.15:  
+                    if rand_val < 0.15:  #Muros
                         mapa[i][j] = 0 #Muro
                     elif rand_val < 0.60:  
                         mapa[i][j] = 1 #Camino
-                    elif rand_val < 0.70:  
+                    elif rand_val < 0.75:  #Túneles
                         mapa[i][j] = 2 #Tunel
-                    else:  
+                    else: 
                         mapa[i][j] = 3 #Lianas
+        
+        for _ in range(filas // 3):  
+            centro_x = random.randint(1, filas-2)
+            centro_y = random.randint(1, columnas-2)
+            
+            #Crear parche pequeño de lianas
+            radio = random.randint(1, 2)  
+            for dx in range(-radio, radio + 1):
+                for dy in range(-radio, radio + 1):
+                    nx = centro_x + dx
+                    ny = centro_y + dy
+                    if (0 <= nx < filas and 0 <= ny < columnas and 
+                        mapa[nx][ny] == 0 and  
+                        random.random() < 0.5):  
+                        mapa[nx][ny] = 3  #Lianas
+        
+        #Convertir menos caminos existentes en lianas
+        for i in range(filas):
+            for j in range(columnas):
+                if mapa[i][j] == 1 and random.random() < 0.1:  
+                    mapa[i][j] = 3  #Lianas
+        
+        #Asegurar que las metas tengan al menos un vecino camino
+        for meta in [meta_izquierda, meta_derecha]:
+            fila_meta, col_meta = meta
+            vecinos_meta = []
+            
+            #Verificar vecinos de la meta
+            for dx, dy in [(0,1),(1,0),(0,-1),(-1,0)]:
+                nf = fila_meta + dx
+                nc = col_meta + dy
+                if 0 <= nf < filas and 0 <= nc < columnas:
+                    vecinos_meta.append((nf, nc))
+            
+            #Si ningún vecino es camino, convertir al menos uno en camino
+            if not any(mapa[nf][nc] in [1, 2, 3] for nf, nc in vecinos_meta):
+                if vecinos_meta:
+                    nf, nc = random.choice(vecinos_meta)
+                    mapa[nf][nc] = 1  #Convertir en camino
         
         return mapa
 
     #E:mapa(matriz)-matriz del juego, jugador(objeto)-objeto Jugador, modo(string)-modo actual de juego
     #S:lista de objetos Enemigo
     #R:mapa debe tener dimensiones válidas, jugador debe tener posición válida
-    #Funcionalidad:Crear enemigos en posiciones aleatorias válidas del mapa
+    #Funcionalidad:Crear enemigos en posiciones aleatorias válidas del mapa con acceso a metas
     def crear_enemigos(mapa, jugador, modo):
         enemigos = []
         cantidad = Modficacion.obtener_cantidad_enemigos()
         filas = len(mapa)
         columnas = len(mapa[0])
         
+        #Definir metas
+        metas_cazador = [
+            (filas-1, 0),  #Esquina inferior izquierda
+            (filas-1, columnas-1)  #Esquina inferior derecha
+        ]
+        
         posiciones_ocupadas = set()
         
         for _ in range(cantidad):
             intentos = 0
-            while intentos < 50:
+            while intentos < 100:  #Más intentos para encontrar buena posición
                 fila = random.randint(0, filas-1)
                 columna = random.randint(0, columnas-1)
                 posicion = (fila, columna)
                 
-                if (mapa[fila][columna] == 1 and 
+                #Verificar que sea posición válida y tenga camino a alguna meta
+                if (mapa[fila][columna] in [1, 3] and  #Camino o Lianas
                     (fila != jugador.fila or columna != jugador.columna) and
-                    posicion not in posiciones_ocupadas):
+                    posicion not in posiciones_ocupadas and
+                    posicion not in metas_cazador):  #No spawnear en metas
                     
-                    enemigos.append(enemigo_clase.Enemigo(fila, columna))
-                    posiciones_ocupadas.add(posicion)
-                    break
+                    #Verificar accesibilidad básica (al menos un vecino camino)
+                    tiene_vecinos_validos = False
+                    for dx, dy in [(0,1),(1,0),(0,-1),(-1,0)]:
+                        nf = fila + dx
+                        nc = columna + dy
+                        if (0 <= nf < filas and 0 <= nc < columnas and 
+                            mapa[nf][nc] in [1, 3]):
+                            tiene_vecinos_validos = True
+                            break
+                    
+                    if tiene_vecinos_validos:
+                        enemigos.append(enemigo_clase.Enemigo(fila, columna))
+                        posiciones_ocupadas.add(posicion)
+                        break
+                
                 intentos += 1
-            
-            if len(enemigos) < _ + 1:
-                break
+        
+            #Si no se pudo encontrar posición buena después de muchos intentos
+            if len(enemigos) < _ + 1 and intentos >= 100:
+                #Forzar posición en cualquier camino disponible
+                for i in range(filas):
+                    for j in range(columnas):
+                        posicion = (i, j)
+                        if (mapa[i][j] in [1, 3] and
+                            (i != jugador.fila or j != jugador.columna) and
+                            posicion not in posiciones_ocupadas and
+                            posicion not in metas_cazador):
+                            
+                            enemigos.append(enemigo_clase.Enemigo(i, j))
+                            posiciones_ocupadas.add(posicion)
+                            break
+                    if len(enemigos) > _:
+                        break
         
         return enemigos
 
@@ -234,7 +345,7 @@ class Gui:
     #R:Debe existir nombre_jugador registrado
     #Funcionalidad:Interfaz principal del juego con mapa, controles y lógica de juego
     def mostrar_mapa():
-        global enemigos, modo_actual ,tiempo_inicio, puntaje_actual, juego_activo, top_jugadores_escapa, top_jugadores_caza, dificultad_actual, nombre_jugador, ultimo_tiempo_movimiento
+        global enemigos, modo_actual ,tiempo_inicio, puntaje_actual, juego_activo, top_jugadores_escapa, top_jugadores_caza, dificultad_actual, nombre_jugador, ultimo_tiempo_movimiento, mapa
         
         mapa_ventana = tk.Tk()
         mapa_ventana.title("Mapa del Juego")
@@ -302,7 +413,7 @@ class Gui:
         #R:Ninguna
         #Funcionalidad:Recrear enemigos según modo y dificultad actual
         def reiniciar_enemigos(event=None):
-            global enemigos
+            global enemigos, mapa
             enemigos = Gui.crear_enemigos(mapa, jugador, modo_actual)
             #Actualizar dificultad en energia
             energia.actualizar_dificultad(dificultad_actual)
@@ -354,11 +465,41 @@ class Gui:
         #R:Ninguna
         #Funcionalidad:Coordinador de cambio de modo que ejecuta todas las funciones necesarias
         def cambiar_modo_completo():
+            global mapa, puntaje_actual  #Necesitamos acceder al mapa y puntaje global
+            
             Modficacion.cambiar_modo(jugador)
             actualizar_boton_modo()
+            
+            #RESETEAR PUNTAJE COMPLETAMENTE AL CAMBIAR DE MODO
+            jugador.puntaje = 0
+            puntaje_actual = 0
+            label_puntaje.config(text="Puntaje: 0")
+            
+            #GENERAR NUEVO MAPA AL CAMBIAR DE MODO
+            mapa = Gui.generar_mapa_aleatorio()
+            
+            #Reiniciar posición del jugador al inicio
+            jugador.fila = 0
+            jugador.columna = 0
+            
+            #Forzar que las metas sean caminos válidos en el nuevo mapa
+            metas_cazador = [
+                (len(mapa)-1, 0),  #Esquina inferior izquierda
+                (len(mapa)-1, len(mapa[0])-1)  #Esquina inferior derecha
+            ]
+            
+            for meta_fila, meta_columna in metas_cazador:
+                mapa[meta_fila][meta_columna] = 1  #Convertir a camino
+            
             reiniciar_enemigos()
             reiniciar_trampas()
-            dibujar_mapa()  #Redibujar mapa para mostrar metas correctas
+            dibujar_mapa()  #Redibujar mapa completo con nuevo layout
+            
+            #Mostrar mensaje informativo
+            messagebox.showinfo("Modo Cambiado", 
+                            f"Modo actual: {modo_actual.capitalize()}\n"
+                            f"Se ha generado un nuevo mapa\n"
+                            f"Puntaje reiniciado a 0")
         
         #E:Ninguna
         #S:Cambia dificultad y reinicia enemigos
@@ -605,20 +746,19 @@ class Gui:
             
             juego_activo = False
             
-            
-            #AGREGAR PUNTAJE
+            #AGREGAR PUNTAJE ACTUAL (no hay separación por modo)
             nuevo_jugador = [jugador.nombre_usuario, jugador.puntaje]
             
             if modo_actual == "escapa":
                 top_jugadores_escapa.append(nuevo_jugador)
             else:
                 top_jugadores_caza.append(nuevo_jugador)
-    
+
             #GUARDAR
             Archivo.salvar_tabla_puntajes()
             
             #MOSTRAR MENSAJES
-            messagebox.showinfo("Info", mensaje)
+            messagebox.showinfo("Info", f"{mensaje}\nPuntaje final: {jugador.puntaje}")
             respuesta = messagebox.askyesno("Salir o no", "¿Desea volver a jugar?", default="no")
             
             if not respuesta:
@@ -770,92 +910,17 @@ class Gui:
                 return
                 
             for enemigo in enemigos:
-                if modo_actual == "cazador":
-                    #Mover enemigos con sistema simplificado en el código principal
-                    meta_izquierda = (len(mapa)-1, 0)
-                    meta_derecha = (len(mapa)-1, len(mapa[0])-1)
-                    
-                    #Calcular distancia a cada meta
-                    dist_izquierda = abs(enemigo.fila - meta_izquierda[0]) + abs(enemigo.columna - meta_izquierda[1])
-                    dist_derecha = abs(enemigo.fila - meta_derecha[0]) + abs(enemigo.columna - meta_derecha[1])
-                    
-                    #Elegir meta
-                    if dist_izquierda < dist_derecha:
-                        meta_fila, meta_columna = meta_izquierda
-                    elif dist_derecha < dist_izquierda:
-                        meta_fila, meta_columna = meta_derecha
-                    else:
-                        meta_fila, meta_columna = random.choice([meta_izquierda, meta_derecha])
-                    
-                    #Movimiento directo en código principal
-                    movimientos_posibles = []
-                    
-                    #Abajo
-                    if enemigo.fila < meta_fila and enemigo.fila + 1 < len(mapa):
-                        if mapa[enemigo.fila + 1][enemigo.columna] in [1, 3]:
-                            if not any(e.fila == enemigo.fila + 1 and e.columna == enemigo.columna for e in enemigos if e != enemigo):
-                                movimientos_posibles.append((enemigo.fila + 1, enemigo.columna))
-                    
-                    #Arriba  
-                    elif enemigo.fila > meta_fila and enemigo.fila - 1 >= 0:
-                        if mapa[enemigo.fila - 1][enemigo.columna] in [1, 3]:
-                            if not any(e.fila == enemigo.fila - 1 and e.columna == enemigo.columna for e in enemigos if e != enemigo):
-                                movimientos_posibles.append((enemigo.fila - 1, enemigo.columna))
-                    
-                    #Derecha
-                    if enemigo.columna < meta_columna and enemigo.columna + 1 < len(mapa[0]):
-                        if mapa[enemigo.fila][enemigo.columna + 1] in [1, 3]:
-                            if not any(e.fila == enemigo.fila and e.columna == enemigo.columna + 1 for e in enemigos if e != enemigo):
-                                movimientos_posibles.append((enemigo.fila, enemigo.columna + 1))
-                    
-                    #Izquierda
-                    elif enemigo.columna > meta_columna and enemigo.columna - 1 >= 0:
-                        if mapa[enemigo.fila][enemigo.columna - 1] in [1, 3]:
-                            if not any(e.fila == enemigo.fila and e.columna == enemigo.columna - 1 for e in enemigos if e != enemigo):
-                                movimientos_posibles.append((enemigo.fila, enemigo.columna - 1))
-                    
-                    #Si hay movimientos hacia la meta, elegir el mejor
-                    if movimientos_posibles:
-                        mejor_movimiento = None
-                        menor_distancia = float('inf')
-                        
-                        for nf, nc in movimientos_posibles:
-                            distancia = abs(nf - meta_fila) + abs(nc - meta_columna)
-                            if distancia < menor_distancia:
-                                menor_distancia = distancia
-                                mejor_movimiento = (nf, nc)
-                        
-                        if mejor_movimiento:
-                            enemigo.fila, enemigo.columna = mejor_movimiento
-                    
-                    else:
-                        #Movimiento aleatorio de emergencia
-                        direcciones = [(0,1),(1,0),(0,-1),(-1,0)]
-                        random.shuffle(direcciones)
-                        
-                        for dx, dy in direcciones:
-                            nf = enemigo.fila + dx
-                            nc = enemigo.columna + dy
-                            
-                            if (0 <= nf < len(mapa) and 0 <= nc < len(mapa[0]) and
-                                mapa[nf][nc] in [1, 3] and
-                                not any(e.fila == nf and e.columna == nc for e in enemigos if e != enemigo)):
-                                
-                                enemigo.fila, enemigo.columna = nf, nc
-                                break
-                    
-                else:
-                    #Modo escapa - usar sistema normal
-                    enemigo.mover(mapa, jugador.fila, jugador.columna, modo_actual, len(mapa), len(mapa[0]), enemigos)
+                #Usar sistema inteligente de clase Enemigo para ambos modos
+                enemigo.mover(mapa, jugador.fila, jugador.columna, modo_actual, len(mapa), len(mapa[0]), enemigos)
             
-            #Recargar energia cuando los enemigos se mueven
+            #Recargar energia cuando enemigos se mueven
             energia.recargar()
             actualizar_barra_energia()
             
             dibujar_enemigos()
             verificar_estado_juego()
             
-            #Programar próximo movimiento solo si el juego sigue activo
+            #Programar próximo movimiento si juego sigue activo
             if juego_activo:
                 velocidad = Modficacion.obtener_velocidad_enemigos()
                 mapa_ventana.after(velocidad, mover_enemigos_automatico)
