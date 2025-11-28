@@ -169,10 +169,12 @@ class Gui:
         for i in range(filas):
             for j in range(columnas):
                 if mapa[i][j] == 0:
-                    rand_val = random.random()
+                    rand_val = random.random() 
                     if rand_val < 0.4:
                         mapa[i][j] = 0 #Muro
-                    elif rand_val < 0.7:
+                    elif rand_val >= 0.4 and rand_val <= 0.6:
+                        mapa[i][j] = 1 #Camino
+                    elif rand_val < 0.8:
                         mapa[i][j] = 2 #Tunel
                     else:
                         mapa[i][j] = 3 #Lianas
@@ -554,10 +556,10 @@ class Gui:
             for enemigo in enemigos:
                 if modo_actual == "cazador":
                     #En modo cazador, enemigos van hacia la meta (esquina inferior derecha)
-                    enemigo.mover_hacia_meta(len(mapa)-1, len(mapa[0])-1, len(mapa), len(mapa[0]), enemigos)
+                    enemigo.mover_hacia_meta(mapa,jugador.fila, jugador.columna,len(mapa)-1, len(mapa[0])-1, len(mapa), len(mapa[0]), enemigos)
                 else:
                     #En modo escapa, enemigos persiguen/huyen según comportamiento normal
-                    enemigo.mover(jugador.fila, jugador.columna, modo_actual, len(mapa), len(mapa[0]), enemigos)
+                    enemigo.mover(mapa,jugador.fila, jugador.columna, modo_actual, len(mapa), len(mapa[0]), enemigos)
             
             #Recargar energia cuando los enemigos se mueven
             energia.recargar()
@@ -692,9 +694,9 @@ class Modficacion:
     #S:Retorna cantidad de enemigos según dificultad
     #R:Ninguna
     #Funcionalidad:Determinar número de enemigos basado en dificultad actual
-    def obtener_cantidad_enemigos():
+    def obtener_cantidad_enemigos(): #TODO: devolver a como estaba :D
         if dificultad_actual == "facil":
-            return 5
+            return 1 #Devolver a 5
         elif dificultad_actual == "intermedio":
             return 7
         else: #dificil
