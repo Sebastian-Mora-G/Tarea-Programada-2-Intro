@@ -35,13 +35,13 @@ class Enemigo:
         
         #Si tenemos un camino, movernos al siguiente paso
         if len(self.camino_actual) > 1:
-            siguiente_paso = self.camino_actual[1]  #El [0] es la posición actual
+            siguiente_paso = self.camino_actual[1]
             nueva_fila, nueva_columna = siguiente_paso
             
             #Verificar si la posición está ocupada
             if not self._posicion_ocupada(nueva_fila, nueva_columna, otros_enemigos or []):
                 self.fila, self.columna = nueva_fila, nueva_columna
-                self.camino_actual.pop(0)  #Quitar el paso que acabamos de tomar
+                self.camino_actual.pop(0)
             else:
                 #Si está ocupada, recalcular camino
                 self.camino_actual = []
@@ -58,7 +58,6 @@ class Enemigo:
     #R:Ninguna
     #Funcionalidad:Encontrar camino usando algoritmo A*
     def _encontrar_camino(self, mapa, fila_inicio, columna_inicio, fila_objetivo, columna_objetivo, filas_mapa, columnas_mapa, modo):
-        #Usar A* para encontrar el camino más corto
         open_set = []
         heapq.heappush(open_set, (0, fila_inicio, columna_inicio))
         
@@ -69,11 +68,9 @@ class Enemigo:
         while open_set:
             _, actual_fila, actual_columna = heapq.heappop(open_set)
             
-            #Si llegamos al objetivo, reconstruir camino
             if actual_fila == fila_objetivo and actual_columna == columna_objetivo:
                 return self._reconstruir_camino(came_from, (actual_fila, actual_columna))
             
-            #Explorar vecinos
             for vecino in self._obtener_vecinos_validos(mapa, actual_fila, actual_columna, filas_mapa, columnas_mapa, modo):
                 vecino_fila, vecino_columna = vecino
                 
@@ -85,7 +82,6 @@ class Enemigo:
                     f_score[vecino] = tentative_g_score + self._heuristic(vecino_fila, vecino_columna, fila_objetivo, columna_objetivo)
                     heapq.heappush(open_set, (f_score[vecino], vecino_fila, vecino_columna))
         
-        #Si no se encuentra camino, devolver lista vacía
         return []
     
     #E:fila_actual,columna_actual,fila_objetivo,columna_objetivo
@@ -101,7 +97,7 @@ class Enemigo:
     #Funcionalidad:Obtener vecinos a los que se puede mover
     def _obtener_vecinos_validos(self, mapa, fila_actual, columna_actual, filas_mapa, columnas_mapa, modo):
         vecinos = []
-        direcciones = [(0,1),(1,0),(0,-1),(-1,0)]  #Derecha,Abajo,Izquierda,Arriba
+        direcciones = [(0,1),(1,0),(0,-1),(-1,0)]
         
         for dx, dy in direcciones:
             nueva_fila = fila_actual + dx
@@ -110,11 +106,10 @@ class Enemigo:
             if (0 <= nueva_fila < filas_mapa and 0 <= nueva_columna < columnas_mapa):
                 terreno = mapa[nueva_fila][nueva_columna]
                 
-                #Verificar según el modo
                 if modo == "escapa":
                     if self.verificar_terreno_perseguir(terreno):
                         vecinos.append((nueva_fila, nueva_columna))
-                else:  #modo cazador
+                else:
                     if self.verificar_terreno_perseguir(terreno):
                         vecinos.append((nueva_fila, nueva_columna))
         
@@ -162,17 +157,12 @@ class Enemigo:
         
         return self.fila, self.columna
     
-    #Funcionalidad para modo cazador (mantener compatibilidad)
-    def mover_hacia_meta(self, mapa, jugador_fila, jugador_columna, meta_fila, meta_columna, filas_mapa, columnas_mapa, otros_enemigos=None):
-        #Usar el mismo sistema de caminos pero con la meta como objetivo
-        return self.mover(mapa, jugador_fila, jugador_columna, "cazador", filas_mapa, columnas_mapa, otros_enemigos)
-    
     #E:terreno
     #S:booleano indicando si puede pasar
     #R:Ninguna
     #Funcionalidad:Verificar terreno válido para persecución
     def verificar_terreno_perseguir(self, terreno):
-        if terreno == 1 or terreno == 3:  #Camino o Lianas
+        if terreno == 1 or terreno == 3:
             return True
         return False
     
@@ -181,6 +171,6 @@ class Enemigo:
     #R:Ninguna
     #Funcionalidad:Verificar terreno válido para huida
     def verificar_terreno_huir(self, terreno):
-        if terreno == 1 or terreno == 2:  #Camino o Túneles
+        if terreno == 1 or terreno == 2:
             return True
         return False

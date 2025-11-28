@@ -1,6 +1,4 @@
-"""
-    ! Fecha de entrega: 28-11-2025
-"""
+#! Fecha de entrega: 28-11-2025
 import tkinter as tk
 from tkinter import messagebox
 import time
@@ -11,8 +9,10 @@ import Clases.muros as muros
 import Clases.jugador as jugador_clase
 import Clases.enemigo as enemigo_clase
 import Clases.energia as energia_clase
+import Clases.trampas as trampas_clase
 import random
 import os
+import winsound  #Para sonidos
 
 #Lista global de jugadores
 nombre_jugador = ""
@@ -30,6 +30,10 @@ top_jugadores_caza = []
 
 #COMMONS(Archivos)-----------------------------------------------------------------
 class Archivo:
+    #E:Ninguna
+    #S:Guarda los top 5 en archivos separados
+    #R:Ninguna
+    #Funcionalidad:Salvar tabla de puntajes en archivos para modo escapa y caza
     def salvar_tabla_puntajes(): 
         """
         Salva en 2 archivos distintos para el top 5 de Escapa y el top 5 de caza. \n
@@ -48,7 +52,10 @@ class Archivo:
         with open("top_5_caza.txt","w") as file:
             file.write(top_5_caza)
 
-
+    #E:Ninguna
+    #S:Carga top_jugadores_escapa global desde archivo
+    #R:Ninguna
+    #Funcionalidad:Leer archivo de top 5 para modo escapa
     def leer_top_5_escapa():
         """
         Lee el archivo de escapa
@@ -60,6 +67,10 @@ class Archivo:
         except:
             top_jugadores_escapa = []
 
+    #E:Ninguna
+    #S:Carga top_jugadores_caza global desde archivo
+    #R:Ninguna
+    #Funcionalidad:Leer archivo de top 5 para modo caza
     def leer_top_5_caza():
         """
         Lee el archivo de Caza
@@ -71,6 +82,10 @@ class Archivo:
         except:
             top_jugadores_caza = []
 
+    #E:lista(list)-lista de jugadores con puntajes
+    #S:lista ordenada del top 5
+    #R:Ninguna
+    #Funcionalidad:Buscar top 5 de la lista dada ordenada de mayor a menor
     def buscar_top_5(lista:list): #van de Mayor a Menor
         """
         Busca el top 5 de la lista dada. \n
@@ -242,6 +257,7 @@ class Gui:
         mapa = Gui.generar_mapa_aleatorio()
         jugador = jugador_clase.Jugador(nombre_jugador,0, 0)
         energia = energia_clase.Energia(dificultad_actual)
+        sistema_trampas = trampas_clase.Trampas()
         
         enemigos = Gui.crear_enemigos(mapa, jugador, modo_actual)
         tiempo_inicio = time.time()
@@ -249,8 +265,30 @@ class Gui:
         cell_size = 35
         juego_activo = True
         
+        #Definir metas para modo cazador (2 esquinas inferiores)
+        metas_cazador = [
+            (len(mapa)-1, 0),  #Esquina inferior izquierda
+            (len(mapa)-1, len(mapa[0])-1)  #Esquina inferior derecha
+        ]
+        
+        #Forzar que las metas sean caminos válidos en el mapa
+        for meta_fila, meta_columna in metas_cazador:
+            mapa[meta_fila][meta_columna] = 1  #Convertir a camino
+        
         #Matriz para almacenar los canvas de cada celda
         celdas_canvas = [[None for _ in range(len(mapa[0]))] for _ in range(len(mapa))]
+        
+        #E:Ninguna
+        #S:Reproduce sonido de muerte de enemigo
+        #R:Ninguna
+        #Funcionalidad:Reproducir sonido cuando se atrapa un enemigo
+        def reproducir_sonido_muerte():
+            try:
+                #Frecuencia y duración para sonido de muerte
+                winsound.Beep(200, 200)  #Frecuencia baja, sonido grave
+                winsound.Beep(150, 300)  #Frecuencia más baja, sonido más grave
+            except:
+                pass  #Si no funciona winsound, no hacer nada
         
         #E:Ninguna
         #S:Actualiza el texto del botón de modo
@@ -263,7 +301,7 @@ class Gui:
         #S:Reinicia lista de enemigos global
         #R:Ninguna
         #Funcionalidad:Recrear enemigos según modo y dificultad actual
-        def reiniciar_enemigos():
+        def reiniciar_enemigos(event=None):
             global enemigos
             enemigos = Gui.crear_enemigos(mapa, jugador, modo_actual)
             #Actualizar dificultad en energia
@@ -292,9 +330,47 @@ class Gui:
             canvas_energia.create_text(75, 35, text=f"Energía: {int(porcentaje)}% - {texto_estado}", 
                                     font=("Arial", 8), tags="texto")
         
+        #E:Ninguna
+        #S:Controla visibilidad del frame de trampas según modo
+        #R:Ninguna
+        #Funcionalidad:Mostrar u ocultar instrucción de trampas según modo de juego
+        def actualizar_visibilidad_trampas():
+            if modo_actual == "escapa":
+                trampas_frame.pack(pady=10)  #Mostrar frame
+            else:
+                trampas_frame.pack_forget()  #Ocultar frame en modo cazador
+        
+        #E:Ninguna
+        #S:Reinicia sistema de trampas
+        #R:Ninguna
+        #Funcionalidad:Reiniciar trampas al cambiar de modo
+        def reiniciar_trampas(event=None):
+            sistema_trampas.reiniciar_trampas()
+            actualizar_visibilidad_trampas()
+            dibujar_trampas()
+        
+        #E:Ninguna
+        #S:Ejecuta todas las acciones necesarias al cambiar modo
+        #R:Ninguna
+        #Funcionalidad:Coordinador de cambio de modo que ejecuta todas las funciones necesarias
+        def cambiar_modo_completo():
+            Modficacion.cambiar_modo(jugador)
+            actualizar_boton_modo()
+            reiniciar_enemigos()
+            reiniciar_trampas()
+            dibujar_mapa()  #Redibujar mapa para mostrar metas correctas
+        
+        #E:Ninguna
+        #S:Cambia dificultad y reinicia enemigos
+        #R:Ninguna
+        #Funcionalidad:Cambiar dificultad y actualizar cantidad de enemigos
+        def cambiar_dificultad_completo(nueva_dificultad):
+            Modficacion.cambiar_dificultad(nueva_dificultad)
+            reiniciar_enemigos()
+        
         #Botones de control
         boton_modo = tk.Button(opciones_frame, text=f"Modo: {modo_actual.capitalize()}", 
-                            command=lambda: [Modficacion.cambiar_modo(jugador), actualizar_boton_modo(), reiniciar_enemigos()], 
+                            command=cambiar_modo_completo, 
                             width=15)
         boton_modo.pack(pady=10)
         
@@ -306,17 +382,17 @@ class Gui:
         label_dificultad.pack()
         
         boton_facil = tk.Button(dificultad_frame, text="Fácil", 
-                            command=lambda: [Modficacion.cambiar_dificultad("facil"), reiniciar_enemigos()], 
+                            command=lambda: cambiar_dificultad_completo("facil"), 
                             width=10)
         boton_facil.pack(pady=2)
         
         boton_intermedio = tk.Button(dificultad_frame, text="Intermedio", 
-                                    command=lambda: [Modficacion.cambiar_dificultad("intermedio"), reiniciar_enemigos()], 
+                                    command=lambda: cambiar_dificultad_completo("intermedio"), 
                                     width=10)
         boton_intermedio.pack(pady=2)
         
         boton_dificil = tk.Button(dificultad_frame, text="Difícil", 
-                                command=lambda: [Modficacion.cambiar_dificultad("dificil"), reiniciar_enemigos()], 
+                                command=lambda: cambiar_dificultad_completo("dificil"), 
                                 width=10)
         boton_dificil.pack(pady=2)
         
@@ -340,7 +416,21 @@ class Gui:
         canvas_energia = tk.Canvas(energia_frame, width=150, height=40, bg="lightgray", highlightthickness=0)
         canvas_energia.pack(pady=5)
         
-        tk.Button(energia_frame, text="Salir", command=lambda:finalizar_juego("Se presionó el botón para salir. ")).pack()
+        #Frame para trampas (se mostrará u ocultará según el modo)
+        trampas_frame = tk.Frame(opciones_frame, bg="lightgray")
+        
+        label_trampas = tk.Label(trampas_frame, text="Presiona Space para colocar trampa", 
+                               bg="lightgray", font=("Arial", 9), wraplength=140)
+        label_trampas.pack()
+        
+        #Inicializar display según modo actual
+        if modo_actual == "escapa":
+            trampas_frame.pack(pady=10)
+        else:
+            trampas_frame.pack_forget()
+        
+        tk.Button(opciones_frame, text="Salir", command=lambda:finalizar_juego("Se presionó el botón para salir. ")).pack()
+        
         #Inicializar barra de energia
         actualizar_barra_energia()
         
@@ -361,12 +451,24 @@ class Gui:
                     canvas.place(x=x1, y=y1)
                     celdas_canvas[i][j] = canvas
                     
-                    #Dibujar "Meta" en la esquina inferior derecha
-                    if i == len(mapa)-1 and j == len(mapa[0])-1:
-                        canvas.configure(bg='gold')
-                        canvas.create_text(cell_size/2, cell_size/2, text="META", 
-                                        fill='black', font=("Arial", 8, "bold"))
-                    elif cell_type == 0:  #Muro
+                    #Dibujar "Meta" según el modo - LAS METAS TIENEN PRIORIDAD SOBRE EL TERRENO
+                    if modo_actual == "escapa":
+                        #En modo escapa, solo una meta en esquina inferior derecha
+                        if i == len(mapa)-1 and j == len(mapa[0])-1:
+                            canvas.configure(bg='gold')
+                            canvas.create_text(cell_size/2, cell_size/2, text="META", 
+                                            fill='black', font=("Arial", 8, "bold"))
+                            continue  #Saltar dibujo de terreno para esta celda
+                    else:
+                        #En modo cazador, 2 metas en esquinas inferiores
+                        if (i, j) in metas_cazador:
+                            canvas.configure(bg='orange')
+                            canvas.create_text(cell_size/2, cell_size/2, text="META", 
+                                            fill='black', font=("Arial", 8, "bold"))
+                            continue  #Saltar dibujo de terreno para esta celda
+                    
+                    #Dibujar terreno solo si no es una meta
+                    if cell_type == 0:  #Muro
                         canvas.create_line(0, cell_size/3, cell_size, cell_size/3, width=2, fill="black")
                         canvas.create_line(0, 2*cell_size/3, cell_size, 2*cell_size/3, width=2, fill="black")
                         canvas.create_line(cell_size/3, 0, cell_size/3, cell_size, width=2, fill="black")
@@ -381,6 +483,7 @@ class Gui:
             
             dibujar_jugador()   
             dibujar_enemigos()
+            dibujar_trampas()
         
         #E:Ninguna
         #S:Actualiza la posición visual del jugador en el mapa
@@ -423,6 +526,26 @@ class Gui:
                                         fill=enemigo.color, font=("Arial", 10, "bold"))
         
         #E:Ninguna
+        #S:Dibuja todas las trampas activas en el mapa
+        #R:Ninguna
+        #Funcionalidad:Renderizar trampas como símbolos en sus posiciones
+        def dibujar_trampas():
+            #Limpiar trampas anteriores
+            for i in range(len(mapa)):
+                for j in range(len(mapa[0])):
+                    canvas = celdas_canvas[i][j]
+                    items = canvas.find_all()
+                    for item in items:
+                        if canvas.type(item) == "text" and canvas.itemcget(item, "text") == "💀":
+                            canvas.delete(item)
+            
+            #Dibujar trampas activas
+            for fila, columna, tiempo in sistema_trampas.trampas_activas:
+                canvas_trampa = celdas_canvas[fila][columna]
+                canvas_trampa.create_text(cell_size/2, cell_size/2, text="💀", 
+                                       fill="darkred", font=("Arial", 10, "bold"))
+        
+        #E:Ninguna
         #S:Actualiza el label de tiempo en la interfaz
         #R:Ninguna
         #Funcionalidad:Mostrar tiempo transcurrido actualizado cada segundo
@@ -430,6 +553,7 @@ class Gui:
             if juego_activo:
                 tiempo_transcurrido = int(time.time() - tiempo_inicio)
                 label_tiempo.config(text=f"Tiempo: {tiempo_transcurrido}s")
+                actualizar_visibilidad_trampas()
                 mapa_ventana.after(1000, actualizar_tiempo)
         
         #E:Ninguna
@@ -445,6 +569,29 @@ class Gui:
                 energia.actualizar(delta_tiempo)
                 actualizar_barra_energia()
                 mapa_ventana.after(100, actualizar_energia)
+        
+        #E:Ninguna
+        #S:Reaparece enemigos eliminados por trampas
+        #R:Ninguna
+        #Funcionalidad:Reubicar enemigos eliminados después de 10 segundos
+        def reaparecer_enemigos():
+            if juego_activo and modo_actual == "escapa":
+                tiempo_actual = time.time()
+                enemigos_para_reaparecer = sistema_trampas.obtener_enemigos_para_reaparecer(tiempo_actual)
+                
+                for fila, columna in enemigos_para_reaparecer:
+                    #Encontrar posición válida aleatoria
+                    while True:
+                        nueva_fila = random.randint(0, len(mapa)-1)
+                        nueva_columna = random.randint(0, len(mapa[0])-1)
+                        if (mapa[nueva_fila][nueva_columna] == 1 and 
+                            (nueva_fila != jugador.fila or nueva_columna != jugador.columna)):
+                            #Crear nuevo enemigo
+                            nuevo_enemigo = enemigo_clase.Enemigo(nueva_fila, nueva_columna)
+                            enemigos.append(nuevo_enemigo)
+                            break
+                
+                mapa_ventana.after(1000, reaparecer_enemigos)
         
         #Inicializar tiempo de energia
         setattr(actualizar_energia, 'ultimo_tiempo', time.time())
@@ -496,49 +643,118 @@ class Gui:
             if not juego_activo:
                 return
                 
-            #Verificar colisiones (solo en modo escapa)
-            for enemigo in enemigos:
-                if enemigo.fila == jugador.fila and enemigo.columna == jugador.columna:
-                    if modo_actual == "escapa":
-                        #Jugador pierde en modo escapa - SIN PUNTAJE
+            #Verificar colisiones con trampas (solo en modo escapa)
+            if modo_actual == "escapa":
+                for enemigo in enemigos[:]:  #Usamos copia para modificar lista durante iteración
+                    if sistema_trampas.hay_trampa(enemigo.fila, enemigo.columna):
+                        #Eliminar enemigo atrapado en trampa
+                        sistema_trampas.eliminar_trampa(enemigo.fila, enemigo.columna, time.time())
+                        enemigos.remove(enemigo)
+                        
+                        #Puntos bonus por eliminar enemigo según dificultad
+                        if dificultad_actual == "facil":
+                            bonus = 50
+                        elif dificultad_actual == "intermedio":
+                            bonus = 100
+                        else:
+                            bonus = 200
+                        
+                        jugador.puntaje += bonus
+                        label_puntaje.config(text=f"Puntaje: {jugador.puntaje}")
+                        dibujar_trampas()
+                        continue  #Continuar con siguiente enemigo
+                
+                #Verificar si enemigo atrapa al jugador
+                for enemigo in enemigos:
+                    if enemigo.fila == jugador.fila and enemigo.columna == jugador.columna:
                         finalizar_juego("¡Te atraparon!\nNo obtienes puntaje por ser atrapado.")
                         return
-                    else:
-                        #En modo cazador, reubicar enemigo y dar ptos a jugador
-                        if modo_actual == "facil":
-                            jugador.puntaje += 200
-                        elif modo_actual == "intermedio":
-                            jugador.puntaje += 600
-                        else:
-                            jugador.puntaje += 1000
-                        while True:
-                            fila = random.randint(0, len(mapa)-1)
-                            columna = random.randint(0, len(mapa[0])-1)
-                            if mapa[fila][columna] == 1:
-                                enemigo.fila = fila
-                                enemigo.columna = columna
-                                break
             
             #Verificar si enemigos llegaron a la meta en modo cazador
             if modo_actual == "cazador":
-                for enemigo in enemigos:
-                    if enemigo.fila == len(mapa)-1 and enemigo.columna == len(mapa[0])-1:
-                        #Reubicar enemigo en posición aleatoria y quitar ptos a jugador
-                        if modo_actual == "facil":
-                            jugador.puntaje -= 100
-                        elif modo_actual == "intermedio":
-                            jugador.puntaje -= 300
+                meta_izquierda = (len(mapa)-1, 0)  #Esquina inferior izquierda
+                meta_derecha = (len(mapa)-1, len(mapa[0])-1)  #Esquina inferior derecha
+                
+                #Revisar si algún enemigo alcanzó alguna meta
+                for enemigo in enemigos[:]:
+                    if (enemigo.fila, enemigo.columna) in [meta_izquierda, meta_derecha]:
+                        #Penalización por enemigo que escapó
+                        if dificultad_actual == "facil":
+                            puntos_perdidos = 50
+                        elif dificultad_actual == "intermedio":
+                            puntos_perdidos = 150
                         else:
-                            jugador.puntaje -= 500
-                        while True:
-                            fila = random.randint(0, len(mapa)-1)
-                            columna = random.randint(0, len(mapa[0])-1)
-                            if mapa[fila][columna] == 1:
-                                enemigo.fila = fila
-                                enemigo.columna = columna
-                                break
+                            puntos_perdidos = 250
+                        
+                        jugador.puntaje = max(0, jugador.puntaje - puntos_perdidos)
+                        label_puntaje.config(text=f"Puntaje: {jugador.puntaje}")
+                        enemigos.remove(enemigo)  #Eliminar enemigo que escapó
+                        dibujar_enemigos()  #Actualizar visualización
+                
+                #Si todos los enemigos escaparon, fin del juego
+                if len(enemigos) == 0:
+                    finalizar_juego("¡Todos los enemigos escaparon!\nJuego terminado.")
+                    return
+                
+                #Verificar si jugador atrapa enemigos
+                for enemigo in enemigos[:]:
+                    if enemigo.fila == jugador.fila and enemigo.columna == jugador.columna:
+                        #Puntos por atrapar enemigo según dificultad
+                        if dificultad_actual == "facil":
+                            puntos_ganados = 100
+                        elif dificultad_actual == "intermedio":
+                            puntos_ganados = 300
+                        else:
+                            puntos_ganados = 500
+                        
+                        jugador.puntaje += puntos_ganados
+                        label_puntaje.config(text=f"Puntaje: {jugador.puntaje}")
+                        reproducir_sonido_muerte()  #Efecto de sonido
+                        
+                        #Resetear camino del enemigo para evitar bugs
+                        enemigo.camino_actual = []
+                        enemigo.objetivo_actual = None
+                        
+                        #Reubicar enemigo lejos del jugador
+                        intentos = 0
+                        while intentos < 100:
+                            nueva_fila = random.randint(0, len(mapa)-1)
+                            nueva_columna = random.randint(0, len(mapa[0])-1)
+                            if (mapa[nueva_fila][nueva_columna] == 1 and 
+                                (nueva_fila != jugador.fila or nueva_columna != jugador.columna) and
+                                not any(e.fila == nueva_fila and e.columna == nueva_columna for e in enemigos) and
+                                (nueva_fila, nueva_columna) not in [meta_izquierda, meta_derecha]):
+                                
+                                #Buscar posición a buena distancia del jugador
+                                distancia = abs(nueva_fila - jugador.fila) + abs(nueva_columna - jugador.columna)
+                                if distancia >= 5:  #Mínimo 5 casillas de separación
+                                    enemigo.fila = nueva_fila
+                                    enemigo.columna = nueva_columna
+                                    break
+                            intentos += 1
+                        
+                        #Si no encontró posición lejana, buscar cualquier posición válida
+                        if intentos >= 100:
+                            intentos = 0
+                            while intentos < 50:
+                                nueva_fila = random.randint(0, len(mapa)-1)
+                                nueva_columna = random.randint(0, len(mapa[0])-1)
+                                if (mapa[nueva_fila][nueva_columna] == 1 and 
+                                    (nueva_fila != jugador.fila or nueva_columna != jugador.columna) and
+                                    not any(e.fila == nueva_fila and e.columna == nueva_columna for e in enemigos) and
+                                    (nueva_fila, nueva_columna) not in [meta_izquierda, meta_derecha]):
+                                    enemigo.fila = nueva_fila
+                                    enemigo.columna = nueva_columna
+                                    break
+                                intentos += 1
+                        
+                        #Si no se pudo reubicar, eliminar el enemigo
+                        if intentos >= 50:
+                            enemigos.remove(enemigo)
+                        
+                        dibujar_enemigos()  #Refrescar pantalla
             
-            #Verificar si jugador llegó al final (modo escapa) - SOLO AQUÍ SE OBTIENE PUNTAJE
+            #Verificar victoria en modo escapa (llegar a la meta)
             if modo_actual == "escapa" and jugador.fila == len(mapa)-1 and jugador.columna == len(mapa[0])-1:
                 tiempo_transcurrido = time.time() - tiempo_inicio
                 puntaje_final = Modficacion.calcular_puntaje(tiempo_transcurrido)
@@ -555,11 +771,82 @@ class Gui:
                 
             for enemigo in enemigos:
                 if modo_actual == "cazador":
-                    #En modo cazador, enemigos van hacia la meta (esquina inferior derecha)
-                    enemigo.mover_hacia_meta(mapa,jugador.fila, jugador.columna,len(mapa)-1, len(mapa[0])-1, len(mapa), len(mapa[0]), enemigos)
+                    #Mover enemigos con sistema simplificado en el código principal
+                    meta_izquierda = (len(mapa)-1, 0)
+                    meta_derecha = (len(mapa)-1, len(mapa[0])-1)
+                    
+                    #Calcular distancia a cada meta
+                    dist_izquierda = abs(enemigo.fila - meta_izquierda[0]) + abs(enemigo.columna - meta_izquierda[1])
+                    dist_derecha = abs(enemigo.fila - meta_derecha[0]) + abs(enemigo.columna - meta_derecha[1])
+                    
+                    #Elegir meta
+                    if dist_izquierda < dist_derecha:
+                        meta_fila, meta_columna = meta_izquierda
+                    elif dist_derecha < dist_izquierda:
+                        meta_fila, meta_columna = meta_derecha
+                    else:
+                        meta_fila, meta_columna = random.choice([meta_izquierda, meta_derecha])
+                    
+                    #Movimiento directo en código principal
+                    movimientos_posibles = []
+                    
+                    #Abajo
+                    if enemigo.fila < meta_fila and enemigo.fila + 1 < len(mapa):
+                        if mapa[enemigo.fila + 1][enemigo.columna] in [1, 3]:
+                            if not any(e.fila == enemigo.fila + 1 and e.columna == enemigo.columna for e in enemigos if e != enemigo):
+                                movimientos_posibles.append((enemigo.fila + 1, enemigo.columna))
+                    
+                    #Arriba  
+                    elif enemigo.fila > meta_fila and enemigo.fila - 1 >= 0:
+                        if mapa[enemigo.fila - 1][enemigo.columna] in [1, 3]:
+                            if not any(e.fila == enemigo.fila - 1 and e.columna == enemigo.columna for e in enemigos if e != enemigo):
+                                movimientos_posibles.append((enemigo.fila - 1, enemigo.columna))
+                    
+                    #Derecha
+                    if enemigo.columna < meta_columna and enemigo.columna + 1 < len(mapa[0]):
+                        if mapa[enemigo.fila][enemigo.columna + 1] in [1, 3]:
+                            if not any(e.fila == enemigo.fila and e.columna == enemigo.columna + 1 for e in enemigos if e != enemigo):
+                                movimientos_posibles.append((enemigo.fila, enemigo.columna + 1))
+                    
+                    #Izquierda
+                    elif enemigo.columna > meta_columna and enemigo.columna - 1 >= 0:
+                        if mapa[enemigo.fila][enemigo.columna - 1] in [1, 3]:
+                            if not any(e.fila == enemigo.fila and e.columna == enemigo.columna - 1 for e in enemigos if e != enemigo):
+                                movimientos_posibles.append((enemigo.fila, enemigo.columna - 1))
+                    
+                    #Si hay movimientos hacia la meta, elegir el mejor
+                    if movimientos_posibles:
+                        mejor_movimiento = None
+                        menor_distancia = float('inf')
+                        
+                        for nf, nc in movimientos_posibles:
+                            distancia = abs(nf - meta_fila) + abs(nc - meta_columna)
+                            if distancia < menor_distancia:
+                                menor_distancia = distancia
+                                mejor_movimiento = (nf, nc)
+                        
+                        if mejor_movimiento:
+                            enemigo.fila, enemigo.columna = mejor_movimiento
+                    
+                    else:
+                        #Movimiento aleatorio de emergencia
+                        direcciones = [(0,1),(1,0),(0,-1),(-1,0)]
+                        random.shuffle(direcciones)
+                        
+                        for dx, dy in direcciones:
+                            nf = enemigo.fila + dx
+                            nc = enemigo.columna + dy
+                            
+                            if (0 <= nf < len(mapa) and 0 <= nc < len(mapa[0]) and
+                                mapa[nf][nc] in [1, 3] and
+                                not any(e.fila == nf and e.columna == nc for e in enemigos if e != enemigo)):
+                                
+                                enemigo.fila, enemigo.columna = nf, nc
+                                break
+                    
                 else:
-                    #En modo escapa, enemigos persiguen/huyen según comportamiento normal
-                    enemigo.mover(mapa,jugador.fila, jugador.columna, modo_actual, len(mapa), len(mapa[0]), enemigos)
+                    #Modo escapa - usar sistema normal
+                    enemigo.mover(mapa, jugador.fila, jugador.columna, modo_actual, len(mapa), len(mapa[0]), enemigos)
             
             #Recargar energia cuando los enemigos se mueven
             energia.recargar()
@@ -579,6 +866,13 @@ class Gui:
         #Funcionalidad:Manejar movimiento del jugador con teclado
         def tecla_presionada(event):
             if not juego_activo:
+                return
+            
+            #Manejar tecla Espacio para colocar trampas (solo en modo escapa)
+            if event.keysym == "space" and modo_actual == "escapa":
+                tiempo_actual = time.time()
+                if sistema_trampas.colocar_trampa(jugador.fila, jugador.columna, tiempo_actual):
+                    dibujar_trampas()
                 return
             
             #Manejar tecla Shift para correr
@@ -624,10 +918,15 @@ class Gui:
         #Iniciar actualización de energia
         actualizar_energia()
         
+        #Iniciar sistema de reaparición de enemigos
+        if modo_actual == "escapa":
+            reaparecer_enemigos()
+        
         #Configurar bindings de teclado
         mapa_ventana.bind("<KeyPress>", tecla_presionada)
         mapa_ventana.bind("<Shift_L>", tecla_presionada)
         mapa_ventana.bind("<Shift_R>", tecla_presionada)
+        mapa_ventana.bind("<space>", tecla_presionada)
         mapa_ventana.focus_set()
         
         mapa_ventana.mainloop()
@@ -680,7 +979,7 @@ class Modficacion:
             modo_actual = "escapa"
             jugador.modo = "escapa"
         messagebox.showinfo("Modo Cambiado", f"Modo actual: {modo_actual.capitalize()}")
-    
+
     #E:nueva_dificultad(string)-dificultad a establecer
     #S:Cambia dificultad_actual global
     #R:nueva_dificultad debe ser "facil", "intermedio" o "dificil"
